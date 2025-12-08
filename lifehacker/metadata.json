@@ -1,0 +1,8 @@
+{
+  "name": "生活黑客",
+  "description": "A minimalist, Apple-inspired life management workspace focusing on intentionality, dreams, and daily execution.",
+  "requestFramePermissions": [
+    "camera",
+    "microphone"
+  ]
+}
