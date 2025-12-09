@@ -1,3 +1,4 @@
+
 import React, { useEffect, useState } from 'react';
 import { Plus, Trash2 } from 'lucide-react';
 import { Dream } from '../types';
@@ -8,20 +9,20 @@ export const DreamManagerPage: React.FC = () => {
   const [newTitle, setNewTitle] = useState('');
 
   useEffect(() => {
-    setDreams(StorageService.getDreams());
+    StorageService.getDreams().then(setDreams);
   }, []);
 
   const handleAddDream = (e: React.ChangeEvent<HTMLInputElement>) => {
     const file = e.target.files?.[0];
     if (file && newTitle) {
       const reader = new FileReader();
-      reader.onloadend = () => {
+      reader.onloadend = async () => {
         const dream: Dream = {
           id: Date.now().toString(),
           title: newTitle,
           imageUrl: reader.result as string
         };
-        StorageService.saveDream(dream);
+        await StorageService.saveDream(dream);
         setDreams(prev => [...prev, dream]);
         setNewTitle('');
       };
@@ -29,10 +30,9 @@ export const DreamManagerPage: React.FC = () => {
     }
   };
 
-  const handleDelete = (id: string) => {
-      const updated = dreams.filter(d => d.id !== id);
-      setDreams(updated);
-      localStorage.setItem('essence_dreams', JSON.stringify(updated));
+  const handleDelete = async (id: string) => {
+      await StorageService.deleteDream(id);
+      setDreams(prev => prev.filter(d => d.id !== id));
   };
 
   return (
