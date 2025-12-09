@@ -1,8 +1,9 @@
+
 import React, { useEffect, useState } from 'react';
 import { FinanceState } from '../types';
 import { StorageService } from '../services/storageService';
 import { PieChart, Pie, Cell, ResponsiveContainer, Tooltip } from 'recharts';
-import { Lock, Plane, ShoppingBag, Save, Calculator, RefreshCw } from 'lucide-react';
+import { Lock, Plane, ShoppingBag, Calculator, RefreshCw } from 'lucide-react';
 
 export const FinancePage: React.FC = () => {
   const [finance, setFinance] = useState<FinanceState>({ 
@@ -13,10 +14,10 @@ export const FinancePage: React.FC = () => {
   const [isEditing, setIsEditing] = useState(false);
 
   useEffect(() => {
-    setFinance(StorageService.getFinance());
+    StorageService.getFinance().then(setFinance);
   }, []);
 
-  const recalculateAndSave = () => {
+  const recalculateAndSave = async () => {
     const { fixed, dream, desire } = finance.ratios;
     const totalRatio = fixed + dream + desire;
     const factor = totalRatio > 0 ? finance.totalIncome / totalRatio : 0;
@@ -33,7 +34,7 @@ export const FinancePage: React.FC = () => {
     };
 
     setFinance(newState);
-    StorageService.saveFinance(newState);
+    await StorageService.saveFinance(newState);
     setIsEditing(false);
   };
 
@@ -46,9 +47,9 @@ export const FinancePage: React.FC = () => {
   };
 
   const data = [
-    { name: '死期存储', value: finance.allocations.fixedSavings, color: '#374151' }, // Gray-700
-    { name: '梦想储蓄', value: finance.allocations.dreamSavings, color: '#8E5E73' }, // Bean Paste Purple
-    { name: '欲望花销', value: finance.allocations.desireSpending, color: '#D4B8C5' }, // Light Bean Paste
+    { name: '死期存储', value: finance.allocations.fixedSavings, color: '#374151' },
+    { name: '梦想储蓄', value: finance.allocations.dreamSavings, color: '#8E5E73' },
+    { name: '欲望花销', value: finance.allocations.desireSpending, color: '#D4B8C5' },
   ];
 
   const AllocationCard = ({ 
