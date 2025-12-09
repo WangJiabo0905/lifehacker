@@ -1,3 +1,4 @@
+
 import React, { useEffect, useState } from 'react';
 import { Play } from 'lucide-react';
 import { Dream } from '../types';
@@ -12,7 +13,7 @@ export const DreamBoard: React.FC<DreamBoardProps> = ({ onEnterApp, isGatekeeper
   const [dreams, setDreams] = useState<Dream[]>([]);
 
   useEffect(() => {
-    setDreams(StorageService.getDreams());
+    StorageService.getDreams().then(setDreams);
   }, []);
 
   return (
