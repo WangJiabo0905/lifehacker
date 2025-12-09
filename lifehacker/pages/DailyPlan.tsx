@@ -1,5 +1,6 @@
+
 import React, { useEffect, useState } from 'react';
-import { CheckCircle, Plus, BarChart3, ChevronLeft, ChevronRight, Calendar as CalendarIcon } from 'lucide-react';
+import { CheckCircle, Plus, ChevronLeft, ChevronRight, Calendar as CalendarIcon } from 'lucide-react';
 import { DailyPlan } from '../types';
 import { StorageService } from '../services/storageService';
 import { BarChart, Bar, XAxis, Tooltip, ResponsiveContainer } from 'recharts';
@@ -12,40 +13,42 @@ export const DailyPlanPage: React.FC = () => {
   const [history, setHistory] = useState<DailyPlan[]>([]);
 
   useEffect(() => {
-    // Load plan for selected date
-    const existing = StorageService.getPlan(currentDate);
-    if (existing) {
-        setPlan(existing);
-    } else {
-        setPlan({ date: currentDate, tasks: [], review: '', harvest: '' });
-    }
+    const loadData = async () => {
+        const existing = await StorageService.getPlan(currentDate);
+        if (existing) {
+            setPlan(existing);
+        } else {
+            setPlan({ date: currentDate, tasks: [], review: '', harvest: '' });
+        }
 
-    const allPlans = StorageService.getAllPlans();
-    setHistory(Object.values(allPlans).sort((a,b) => a.date.localeCompare(b.date)));
+        const allPlans = await StorageService.getAllPlans();
+        setHistory(Object.values(allPlans).sort((a,b) => a.date.localeCompare(b.date)));
+    };
+    loadData();
   }, [currentDate]);
 
-  const save = (updated: DailyPlan) => {
+  const save = async (updated: DailyPlan) => {
     setPlan(updated);
-    StorageService.savePlan(updated);
+    await StorageService.savePlan(updated);
   };
 
-  const addTask = (e: React.FormEvent) => {
+  const addTask = async (e: React.FormEvent) => {
     e.preventDefault();
     if (!newTask.trim()) return;
     const updated = {
       ...plan,
       tasks: [...plan.tasks, { id: Date.now().toString(), text: newTask, completed: false }]
     };
-    save(updated);
+    await save(updated);
     setNewTask('');
   };
 
-  const toggleTask = (id: string) => {
+  const toggleTask = async (id: string) => {
     const updated = {
       ...plan,
       tasks: plan.tasks.map(t => t.id === id ? { ...t, completed: !t.completed } : t)
     };
-    save(updated);
+    await save(updated);
   };
 
   // Chart Data: Last 7 days relative to TODAY
