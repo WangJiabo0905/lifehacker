@@ -1,8 +1,9 @@
+
 import React, { useEffect, useState } from 'react';
 import { RecordType, WorkExpenseRecord } from '../types';
 import { StorageService } from '../services/storageService';
 import { BarChart, Bar, XAxis, Tooltip, ResponsiveContainer } from 'recharts';
-import { CreditCard, Plus, ShoppingBag, Coffee, Car, AlertCircle, TrendingUp, Calendar, ChevronLeft, ChevronRight, Trash2 } from 'lucide-react';
+import { CreditCard, Plus, TrendingUp, Calendar, ChevronLeft, ChevronRight, Trash2 } from 'lucide-react';
 
 export const ExpensesPage: React.FC = () => {
   const [records, setRecords] = useState<WorkExpenseRecord[]>([]);
@@ -10,25 +11,19 @@ export const ExpensesPage: React.FC = () => {
   const [category, setCategory] = useState('Food');
   const [note, setNote] = useState('');
 
-  // Date State
   const today = new Date().toISOString().split('T')[0];
   const [selectedDate, setSelectedDate] = useState(today);
 
   useEffect(() => {
-    setRecords(StorageService.getRecords());
+    StorageService.getRecords().then(setRecords);
   }, []);
 
-  const handleSubmit = (e: React.FormEvent) => {
+  const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
     if (!amount) return;
 
-    // Use current time on the selected date if possible, but simplest is just "now" if today, 
-    // or noon on historical date to ensure it lands in the day.
     let dateToSave = new Date().toISOString();
-    
-    // If user is adding record to a past date
     if (selectedDate !== today) {
-        // Set it to 12:00 PM of that date to avoid timezone weirdness
         dateToSave = new Date(selectedDate + 'T12:00:00').toISOString();
     }
 
@@ -41,14 +36,14 @@ export const ExpensesPage: React.FC = () => {
       note
     };
 
-    StorageService.saveRecord(newRecord);
+    await StorageService.saveRecord(newRecord);
     setRecords(prev => [...prev, newRecord]);
     setAmount('');
     setNote('');
   };
 
-  const handleDelete = (id: string) => {
-    StorageService.deleteRecord(id);
+  const handleDelete = async (id: string) => {
+    await StorageService.deleteRecord(id);
     setRecords(prev => prev.filter(r => r.id !== id));
   };
 
@@ -60,7 +55,6 @@ export const ExpensesPage: React.FC = () => {
 
   const expenseRecords = records.filter(r => r.type === RecordType.EXPENSE);
 
-  // --- Stats Logic based on SELECTED DATE ---
   const selectedDateObj = new Date(selectedDate);
 
   const getStats = (period: 'day' | 'week' | 'month' | 'year') => {
@@ -69,7 +63,6 @@ export const ExpensesPage: React.FC = () => {
       if (period === 'day') {
           filtered = expenseRecords.filter(r => r.date.startsWith(selectedDate));
       } else if (period === 'week') {
-          // Week ending on selected date
           const start = new Date(selectedDateObj);
           start.setDate(start.getDate() - 6);
           const startStr = start.toISOString().split('T')[0];
@@ -78,10 +71,10 @@ export const ExpensesPage: React.FC = () => {
               return d >= startStr && d <= selectedDate;
           });
       } else if (period === 'month') {
-          const m = selectedDate.slice(0, 7); // YYYY-MM
+          const m = selectedDate.slice(0, 7); 
           filtered = expenseRecords.filter(r => r.date.startsWith(m));
       } else {
-          const y = selectedDate.slice(0, 4); // YYYY
+          const y = selectedDate.slice(0, 4); 
           filtered = expenseRecords.filter(r => r.date.startsWith(y));
       }
 
@@ -97,7 +90,6 @@ export const ExpensesPage: React.FC = () => {
   const statsMonth = getStats('month');
   const statsYear = getStats('year');
 
-  // Chart Data: Last 7 days relative to Selected Date
   const chartData = Array.from({length: 7}, (_, i) => {
     const d = new Date(selectedDate);
     d.setDate(d.getDate() - (6 - i));
@@ -131,7 +123,6 @@ export const ExpensesPage: React.FC = () => {
           <h2 className="text-3xl font-bold text-white">日常开销</h2>
           <p className="text-white/70 mt-1">审视每一笔支出，控制欲望。</p>
         </div>
-        {/* Date Navigation */}
         <div className="flex items-center gap-4 bg-white/10 p-2 rounded-xl backdrop-blur-sm">
              <button onClick={() => changeDate(-1)} className="p-1 text-white hover:bg-white/20 rounded-full transition-colors"><ChevronLeft size={20}/></button>
              <div className="relative group flex items-center gap-2 text-white">
@@ -148,7 +139,6 @@ export const ExpensesPage: React.FC = () => {
       </header>
 
       <div className="grid grid-cols-1 md:grid-cols-2 gap-8">
-        {/* Input Form */}
         <div className="bg-white p-8 rounded-3xl shadow-lg border border-white/20 relative overflow-hidden">
            {selectedDate !== today && (
                <div className="absolute top-0 left-0 right-0 bg-[#8E5E73] text-white text-xs text-center py-1">
@@ -206,9 +196,7 @@ export const ExpensesPage: React.FC = () => {
            </form>
         </div>
 
-        {/* Analysis */}
         <div className="flex flex-col gap-6">
-           {/* Chart */}
            <div className="bg-white p-6 rounded-3xl shadow-lg border border-white/20">
               <div className="flex items-center gap-2 mb-6">
                  <CreditCard size={20} className="text-[#8E5E73]" />
@@ -225,7 +213,6 @@ export const ExpensesPage: React.FC = () => {
               </div>
            </div>
 
-           {/* Stats Grid */}
            <div className="bg-white p-6 rounded-3xl shadow-lg border border-white/20 flex-1">
              <h3 className="font-semibold text-gray-700 mb-4 flex items-center gap-2">
                  <TrendingUp size={18} className="text-gray-400" /> 统计 ({selectedDate.slice(0,4)})
@@ -241,7 +228,6 @@ export const ExpensesPage: React.FC = () => {
         </div>
       </div>
 
-      {/* Transaction List */}
       <div className="bg-white p-6 rounded-3xl shadow-lg border border-white/20">
          <h3 className="font-semibold text-gray-700 mb-4">当日明细 ({selectedDate})</h3>
          <div className="space-y-3">
