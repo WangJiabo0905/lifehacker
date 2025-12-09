@@ -1,3 +1,4 @@
+
 export enum RecordType {
   WORK = 'WORK',
   EXPENSE = 'EXPENSE'
@@ -16,8 +17,8 @@ export interface ListItem {
   id: string;
   text: string;
   createdAt: string;
-  category?: string; // For Inspiration: 'sentence', 'book', 'article'
-  author?: string;   // Optional metadata
+  category?: 'sentence' | 'book' | 'article'; // Explicit types
+  author?: string;   // Optional metadata for books/articles
   content?: string;  // Optional: For Article paragraphs/body
 }
 
@@ -34,7 +35,7 @@ export interface FinanceState {
     dream: number; // Percentage 0-100
     desire: number; // Percentage 0-100
   };
-  // Calculated values are derived, but we can store them for persistence convenience.
+  // Calculated values
   allocations: {
     fixedSavings: number;
     dreamSavings: number;
