@@ -1,19 +1,15 @@
+
 import React from 'react';
 import { Download, Upload, ShieldCheck, AlertTriangle, Database } from 'lucide-react';
+import { StorageService } from '../services/storageService';
 
 export const DataBackupPage: React.FC = () => {
   
-  const handleExport = () => {
-    // Collect ALL data keys
+  const handleExport = async () => {
+    // Async get all data from IndexedDB
+    const allData = await StorageService.getAllData();
     const data = {
-      records: localStorage.getItem('essence_records'),       // 工作 & 开销
-      not_to_do: localStorage.getItem('essence_not_to_do'),   // 不为清单
-      success: localStorage.getItem('essence_success'),       // 成功日记
-      ideas: localStorage.getItem('essence_ideas'),           // 赚钱想法
-      inspiration: localStorage.getItem('essence_inspiration'), // 启发清单 (新增)
-      dreams: localStorage.getItem('essence_dreams'),         // 梦想相册 (含图片Base64)
-      finance: localStorage.getItem('essence_finance_v2'),    // 理财配置
-      plans: localStorage.getItem('essence_plans'),           // 每日计划 & 复盘
+      ...allData,
       exportDate: new Date().toISOString()
     };
     
@@ -37,22 +33,14 @@ export const DataBackupPage: React.FC = () => {
     }
 
     const reader = new FileReader();
-    reader.onload = (event) => {
+    reader.onload = async (event) => {
       try {
         const json = JSON.parse(event.target?.result as string);
         
-        // Simple validation
         if (!json.exportDate) throw new Error("无效的备份文件：缺少时间戳");
 
-        // Restore ALL keys
-        if(json.records) localStorage.setItem('essence_records', json.records);
-        if(json.not_to_do) localStorage.setItem('essence_not_to_do', json.not_to_do);
-        if(json.success) localStorage.setItem('essence_success', json.success);
-        if(json.ideas) localStorage.setItem('essence_ideas', json.ideas);
-        if(json.inspiration) localStorage.setItem('essence_inspiration', json.inspiration);
-        if(json.dreams) localStorage.setItem('essence_dreams', json.dreams);
-        if(json.finance) localStorage.setItem('essence_finance_v2', json.finance);
-        if(json.plans) localStorage.setItem('essence_plans', json.plans);
+        // Async Restore
+        await StorageService.restoreAllData(json);
 
         alert(`数据恢复成功！\n备份日期: ${new Date(json.exportDate).toLocaleString()}\n页面将刷新以加载新数据。`);
         window.location.reload();
@@ -69,11 +57,10 @@ export const DataBackupPage: React.FC = () => {
     <div className="max-w-2xl mx-auto space-y-8 animate-fade-in pb-12">
       <header>
         <h2 className="text-3xl font-bold text-white">数据资产</h2>
-        <p className="text-white/70 mt-1">您完全拥有您的数据。备份包含所有清单、图片和记录。</p>
+        <p className="text-white/70 mt-1">您完全拥有您的数据。我们已升级至 IndexedDB 存储技术，支持海量数据。</p>
       </header>
 
       <div className="grid grid-cols-1 gap-6">
-        {/* Export Card */}
         <div className="bg-white p-8 rounded-3xl shadow-lg border border-white/20 relative overflow-hidden group">
            <div className="absolute top-0 right-0 p-4 opacity-10 group-hover:opacity-20 transition-opacity">
                <Database size={100} className="text-[#8E5E73]" />
@@ -106,7 +93,6 @@ export const DataBackupPage: React.FC = () => {
            </button>
         </div>
 
-        {/* Import Card */}
         <div className="bg-white p-8 rounded-3xl shadow-lg border border-white/20">
            <div className="flex items-start gap-4 mb-6">
              <div className="bg-gray-100 p-3 rounded-xl text-gray-700">
@@ -139,7 +125,7 @@ export const DataBackupPage: React.FC = () => {
 
         <div className="flex items-center justify-center gap-2 text-white/40 text-sm">
             <ShieldCheck size={14} />
-            <span>数据仅存储于本地 LocalStorage，无云端同步，绝对私密。</span>
+            <span>数据存储于本地 IndexedDB，支持 GB 级存储，绝对私密。</span>
         </div>
 
       </div>
