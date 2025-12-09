@@ -1,14 +1,14 @@
+
 import React, { useEffect, useState, useRef, useCallback } from 'react';
 import { RecordType, WorkExpenseRecord } from '../types';
 import { StorageService } from '../services/storageService';
 import { BarChart, Bar, XAxis, Tooltip, ResponsiveContainer } from 'recharts';
 import { Play, Pause, Square, Save, Clock, Info, ChevronLeft, ChevronRight, Calendar, Zap, Minus, TrendingUp, TrendingDown } from 'lucide-react';
 
-// Keys for persistence
 const TIMER_KEYS = {
-  STATUS: 'essence_timer_status', // 'RUNNING' | 'PAUSED' | 'IDLE'
-  START_TIME: 'essence_timer_start_time', // Timestamp when current segment started
-  ACCUMULATED: 'essence_timer_accumulated', // Seconds accumulated before current segment
+  STATUS: 'essence_timer_status', 
+  START_TIME: 'essence_timer_start_time',
+  ACCUMULATED: 'essence_timer_accumulated',
   CATEGORY: 'essence_timer_category',
   NOTE: 'essence_timer_note'
 };
@@ -16,13 +16,11 @@ const TIMER_KEYS = {
 export const WorkTimerPage: React.FC = () => {
   const [records, setRecords] = useState<WorkExpenseRecord[]>([]);
   
-  // Timer State
   const [timerStatus, setTimerStatus] = useState<'IDLE' | 'RUNNING' | 'PAUSED'>('IDLE');
   const [seconds, setSeconds] = useState(0);
   const [category, setCategory] = useState('Deep Work');
   const [note, setNote] = useState('');
   
-  // Date State for History Navigation
   const getTodayShifted = () => {
     const d = new Date();
     d.setHours(d.getHours() - 6);
@@ -32,9 +30,6 @@ export const WorkTimerPage: React.FC = () => {
   
   const timerIntervalRef = useRef<ReturnType<typeof setInterval> | null>(null);
 
-  // --- 1. The Robust Tick Engine ---
-  // Calculates time based on timestamps, not by counting seconds.
-  // This makes it immune to browser throttling or page refreshes.
   const tick = useCallback(() => {
     const startTimeStr = localStorage.getItem(TIMER_KEYS.START_TIME);
     const accumulatedStr = localStorage.getItem(TIMER_KEYS.ACCUMULATED);
@@ -44,16 +39,13 @@ export const WorkTimerPage: React.FC = () => {
     
     const now = Date.now();
     const currentSegmentSeconds = Math.floor((now - startTime) / 1000);
-    
-    // Total seconds = Previously accumulated + Current segment
     setSeconds(accumulated + currentSegmentSeconds);
   }, []);
 
-  // --- 2. Initialization & Recovery (The "Standby" Logic) ---
   useEffect(() => {
-    setRecords(StorageService.getRecords());
+    // Async load records
+    StorageService.getRecords().then(setRecords);
 
-    // Recover state from LocalStorage on mount
     const savedStatus = localStorage.getItem(TIMER_KEYS.STATUS) as 'IDLE' | 'RUNNING' | 'PAUSED' | null;
     const savedCategory = localStorage.getItem(TIMER_KEYS.CATEGORY);
     const savedNote = localStorage.getItem(TIMER_KEYS.NOTE);
@@ -63,9 +55,7 @@ export const WorkTimerPage: React.FC = () => {
 
     if (savedStatus === 'RUNNING') {
       setTimerStatus('RUNNING');
-      // Immediate tick to update UI
       tick(); 
-      // Start loop
       timerIntervalRef.current = setInterval(tick, 1000);
     } else if (savedStatus === 'PAUSED') {
       setTimerStatus('PAUSED');
@@ -78,13 +68,10 @@ export const WorkTimerPage: React.FC = () => {
     };
   }, [tick]);
 
-  // --- 3. Control Logic ---
-
   const handleStart = () => {
     const now = Date.now();
     localStorage.setItem(TIMER_KEYS.STATUS, 'RUNNING');
     localStorage.setItem(TIMER_KEYS.START_TIME, now.toString());
-    // Preserve existing accumulated time if resuming
     if (!localStorage.getItem(TIMER_KEYS.ACCUMULATED)) {
         localStorage.setItem(TIMER_KEYS.ACCUMULATED, '0');
     }
@@ -96,25 +83,22 @@ export const WorkTimerPage: React.FC = () => {
   const handlePause = () => {
     if (timerIntervalRef.current) clearInterval(timerIntervalRef.current);
     
-    // Calculate final time for this segment and add to accumulated
     const startTime = parseInt(localStorage.getItem(TIMER_KEYS.START_TIME) || Date.now().toString(), 10);
     const previouslyAccumulated = parseInt(localStorage.getItem(TIMER_KEYS.ACCUMULATED) || '0', 10);
     const currentSegment = Math.floor((Date.now() - startTime) / 1000);
     const newTotal = previouslyAccumulated + currentSegment;
 
-    // Update Storage
     localStorage.setItem(TIMER_KEYS.STATUS, 'PAUSED');
     localStorage.setItem(TIMER_KEYS.ACCUMULATED, newTotal.toString());
-    localStorage.removeItem(TIMER_KEYS.START_TIME); // Clear start time as we are not running
+    localStorage.removeItem(TIMER_KEYS.START_TIME);
 
     setSeconds(newTotal);
     setTimerStatus('PAUSED');
   };
 
-  const handleFinish = () => {
+  const handleFinish = async () => {
     if (timerIntervalRef.current) clearInterval(timerIntervalRef.current);
 
-    // Final calculation
     let finalSeconds = seconds;
     if (timerStatus === 'RUNNING') {
         const startTime = parseInt(localStorage.getItem(TIMER_KEYS.START_TIME) || Date.now().toString(), 10);
@@ -124,11 +108,9 @@ export const WorkTimerPage: React.FC = () => {
 
     if (finalSeconds < 60) {
       alert("记录时间太短 (少于1分钟)，建议继续工作或取消。");
-      // If they cancel the finish, we just leave it as is (if running, it keeps running; if paused, stays paused)
       return; 
     }
 
-    // Save Record
     const hours = parseFloat((finalSeconds / 3600).toFixed(2));
     const newRecord: WorkExpenseRecord = {
       id: Date.now().toString(),
@@ -138,10 +120,11 @@ export const WorkTimerPage: React.FC = () => {
       date: new Date().toISOString(),
       note: note || '计时会话'
     };
-    StorageService.saveRecord(newRecord);
+    
+    // Async save
+    await StorageService.saveRecord(newRecord);
     setRecords(prev => [...prev, newRecord]);
 
-    // Reset Timer & Storage
     hardReset();
   };
 
@@ -158,8 +141,6 @@ export const WorkTimerPage: React.FC = () => {
     if (timerIntervalRef.current) clearInterval(timerIntervalRef.current);
   };
 
-  // --- 4. Input Persistence ---
-  // Save inputs as user types so refresh doesn't lose them
   const updateCategory = (val: string) => {
       setCategory(val);
       localStorage.setItem(TIMER_KEYS.CATEGORY, val);
@@ -170,7 +151,6 @@ export const WorkTimerPage: React.FC = () => {
       localStorage.setItem(TIMER_KEYS.NOTE, val);
   };
 
-  // --- Formatting & Helpers ---
   const formatTime = (totalSeconds: number) => {
     const h = Math.floor(totalSeconds / 3600);
     const m = Math.floor((totalSeconds % 3600) / 60);
@@ -178,17 +158,12 @@ export const WorkTimerPage: React.FC = () => {
     return `${h.toString().padStart(2, '0')}:${m.toString().padStart(2, '0')}:${s.toString().padStart(2, '0')}`;
   };
 
-  /**
-   * Helper to get the "Shifted Date" (Virtual Day) for any ISO string.
-   * Logic: If time < 6:00 AM, it counts as previous day.
-   */
   const getShiftedDateStr = (dateString: string) => {
     const d = new Date(dateString);
     d.setHours(d.getHours() - 6); 
     return d.toISOString().split('T')[0];
   };
 
-  // --- Date Navigation Logic ---
   const changeDate = (offset: number) => {
     const d = new Date(selectedDate);
     d.setDate(d.getDate() + offset);
@@ -197,20 +172,16 @@ export const WorkTimerPage: React.FC = () => {
   
   const isTodaySelected = selectedDate === getTodayShifted();
 
-  // --- Stats Calculation based on SELECTED DATE ---
   const workRecords = records.filter(r => r.type === RecordType.WORK);
   
-  // 1. Selected Day Total
   const selectedDayTotal = workRecords
     .filter(r => getShiftedDateStr(r.date) === selectedDate)
     .reduce((a, b) => a + b.value, 0);
 
-  // 2. Selected Day's Log List
   const selectedDayLogs = workRecords
     .filter(r => getShiftedDateStr(r.date) === selectedDate)
     .sort((a, b) => new Date(b.date).getTime() - new Date(a.date).getTime());
 
-  // 3. Week Calculation
   const getStatsForPeriod = (startStr: string, endStr: string) => { 
      const filtered = workRecords.filter(r => {
         const d = getShiftedDateStr(r.date);
@@ -243,7 +214,6 @@ export const WorkTimerPage: React.FC = () => {
   const weekDiff = statsCurrentWeek.total - statsPrevWeek.total;
   const weekDiffPercent = statsPrevWeek.total > 0 ? (weekDiff / statsPrevWeek.total) * 100 : 0;
 
-  // Chart Data
   const chartData = Array.from({length: 7}, (_, i) => {
     const d = new Date(selectedDate);
     d.setDate(d.getDate() - (6 - i));
@@ -279,14 +249,13 @@ export const WorkTimerPage: React.FC = () => {
               <div className="group relative">
                   <Info size={18} className="text-white/50 cursor-help" />
                   <div className="absolute left-full top-0 ml-2 w-64 p-3 bg-black/90 text-white text-xs rounded-lg shadow-xl opacity-0 group-hover:opacity-100 transition-opacity pointer-events-none z-10 font-light">
-                      工业级计时内核：即使关闭浏览器或刷新页面，计时也会在后台准确运行。依据 6AM 法则归档。
+                      内核升级：现已使用 IndexedDB 存储，支持海量历史记录查询。
                   </div>
               </div>
           </div>
           <p className="text-white/70 mt-1">记录专注时刻，累积心流体验。</p>
         </div>
         
-        {/* Date Navigation */}
         <div className="flex items-center gap-4 bg-white/10 p-2 rounded-xl backdrop-blur-sm">
              <button onClick={() => changeDate(-1)} className="p-1 text-white hover:bg-white/20 rounded-full transition-colors"><ChevronLeft size={20}/></button>
              <div className="relative group flex items-center gap-2 text-white">
@@ -303,10 +272,8 @@ export const WorkTimerPage: React.FC = () => {
       </header>
 
       <div className="grid grid-cols-1 md:grid-cols-2 gap-8">
-        {/* Timer Card */}
         <div className={`bg-white p-8 rounded-3xl shadow-lg border border-white/20 flex flex-col items-center justify-center min-h-[300px] transition-all relative overflow-hidden ${!isTodaySelected ? 'opacity-90 grayscale-[0.5]' : ''}`}>
           
-          {/* Active Status Indicator */}
           {timerStatus === 'RUNNING' && isTodaySelected && (
               <div className="absolute top-4 right-4 flex items-center gap-2 bg-[#8E5E73]/10 px-3 py-1 rounded-full animate-pulse">
                   <div className="w-2 h-2 rounded-full bg-[#8E5E73]"></div>
@@ -394,9 +361,7 @@ export const WorkTimerPage: React.FC = () => {
           </div>
         </div>
 
-        {/* Stats Column */}
         <div className="flex flex-col gap-6">
-           {/* Week Comparison Card */}
            <div className="bg-white p-6 rounded-3xl shadow-lg border border-white/20">
               <div className="flex justify-between items-center mb-4">
                  <h3 className="font-semibold text-gray-700 flex items-center gap-2">
@@ -420,7 +385,6 @@ export const WorkTimerPage: React.FC = () => {
               </div>
            </div>
 
-           {/* Chart */}
           <div className="bg-white p-6 rounded-3xl shadow-lg border border-white/20">
              <h3 className="font-semibold text-gray-700 mb-4">走势图 ({selectedDate.slice(0,4)})</h3>
              <div className="h-28">
@@ -434,7 +398,6 @@ export const WorkTimerPage: React.FC = () => {
              </div>
           </div>
           
-          {/* Detailed Stats Grid */}
           <div className="bg-white p-6 rounded-3xl shadow-lg border border-white/20 flex-1">
              <div className="grid grid-cols-2 gap-4 h-full">
                 <StatBox label={`${selectedDate.slice(5,7)}月总计`} total={statsMonth.total} avg={statsMonth.avg} />
@@ -444,7 +407,6 @@ export const WorkTimerPage: React.FC = () => {
         </div>
       </div>
 
-      {/* Daily Logs List */}
       <div className="bg-white p-6 rounded-3xl shadow-lg border border-white/20">
          <h3 className="font-semibold text-gray-700 mb-4">当日记录详情 ({selectedDate})</h3>
          <div className="space-y-3">
