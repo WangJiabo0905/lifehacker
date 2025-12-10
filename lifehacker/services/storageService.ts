@@ -1,5 +1,5 @@
 
-import { DailyPlan, Dream, FinanceState, ListItem, WorkExpenseRecord } from '../types';
+import { DailyPlan, Dream, FinanceState, ListItem, MasteryGoal, WorkExpenseRecord } from '../types';
 
 const DB_NAME = 'EssenceDB';
 const DB_VERSION = 1;
@@ -15,6 +15,7 @@ const KEYS = {
   DREAMS: 'essence_dreams',
   FINANCE: 'essence_finance_v2',
   PLANS: 'essence_plans',
+  MASTERY_GOALS: 'essence_mastery_goals', // New Key
 };
 
 // Internal Helper to interact with IndexedDB
@@ -177,6 +178,23 @@ export const StorageService = {
     await set(KEYS.PLANS, allPlans);
   },
   getAllPlans: () => get<Record<string, DailyPlan>>(KEYS.PLANS, {}),
+
+  // Mastery Goals
+  getMasteryGoals: () => get<MasteryGoal[]>(KEYS.MASTERY_GOALS, []),
+  saveMasteryGoal: async (goal: MasteryGoal) => {
+    const data = await StorageService.getMasteryGoals();
+    // Check if exists to update, else append
+    const exists = data.some(g => g.id === goal.id);
+    if (exists) {
+        await set(KEYS.MASTERY_GOALS, data.map(g => g.id === goal.id ? goal : g));
+    } else {
+        await set(KEYS.MASTERY_GOALS, [...data, goal]);
+    }
+  },
+  deleteMasteryGoal: async (id: string) => {
+    const data = await StorageService.getMasteryGoals();
+    await set(KEYS.MASTERY_GOALS, data.filter(g => g.id !== id));
+  },
 
   // New Helper for Data Backup to get everything at once
   getAllData: async () => {
