@@ -11,7 +11,10 @@ export const ExpensesPage: React.FC = () => {
   const [category, setCategory] = useState('Food');
   const [note, setNote] = useState('');
 
-  const today = new Date().toISOString().split('T')[0];
+  // Use local time for "today"
+  const d = new Date();
+  const today = `${d.getFullYear()}-${String(d.getMonth() + 1).padStart(2, '0')}-${String(d.getDate()).padStart(2, '0')}`;
+  
   const [selectedDate, setSelectedDate] = useState(today);
 
   useEffect(() => {
@@ -23,8 +26,12 @@ export const ExpensesPage: React.FC = () => {
     if (!amount) return;
 
     let dateToSave = new Date().toISOString();
+    // Ensure we are saving for the selected local date
     if (selectedDate !== today) {
-        dateToSave = new Date(selectedDate + 'T12:00:00').toISOString();
+        // Construct a safe date string for the selected day in local time
+        // appending T12:00:00 ensures we are safely in the middle of that day
+        const d = new Date(selectedDate + 'T12:00:00');
+        dateToSave = d.toISOString();
     }
 
     const newRecord: WorkExpenseRecord = {
@@ -48,38 +55,51 @@ export const ExpensesPage: React.FC = () => {
   };
 
   const changeDate = (offset: number) => {
-    const d = new Date(selectedDate);
+    const d = new Date(selectedDate + 'T00:00:00'); // Force local time
     d.setDate(d.getDate() + offset);
-    setSelectedDate(d.toISOString().split('T')[0]);
+    const year = d.getFullYear();
+    const month = String(d.getMonth() + 1).padStart(2, '0');
+    const day = String(d.getDate()).padStart(2, '0');
+    setSelectedDate(`${year}-${month}-${day}`);
   };
 
   const expenseRecords = records.filter(r => r.type === RecordType.EXPENSE);
 
-  const selectedDateObj = new Date(selectedDate);
+  const selectedDateObj = new Date(selectedDate + 'T00:00:00');
+
+  // Helper to get local YMD from a record's ISO string
+  const toLocalYMD = (isoStr: string) => {
+      const d = new Date(isoStr);
+      const year = d.getFullYear();
+      const month = String(d.getMonth() + 1).padStart(2, '0');
+      const day = String(d.getDate()).padStart(2, '0');
+      return `${year}-${month}-${day}`;
+  };
 
   const getStats = (period: 'day' | 'week' | 'month' | 'year') => {
       let filtered = [];
       
       if (period === 'day') {
-          filtered = expenseRecords.filter(r => r.date.startsWith(selectedDate));
+          filtered = expenseRecords.filter(r => toLocalYMD(r.date) === selectedDate);
       } else if (period === 'week') {
           const start = new Date(selectedDateObj);
           start.setDate(start.getDate() - 6);
-          const startStr = start.toISOString().split('T')[0];
+          const startStr = `${start.getFullYear()}-${String(start.getMonth() + 1).padStart(2, '0')}-${String(start.getDate()).padStart(2, '0')}`;
+          
           filtered = expenseRecords.filter(r => {
-              const d = r.date.split('T')[0];
+              const d = toLocalYMD(r.date);
               return d >= startStr && d <= selectedDate;
           });
       } else if (period === 'month') {
           const m = selectedDate.slice(0, 7); 
-          filtered = expenseRecords.filter(r => r.date.startsWith(m));
+          filtered = expenseRecords.filter(r => toLocalYMD(r.date).startsWith(m));
       } else {
           const y = selectedDate.slice(0, 4); 
-          filtered = expenseRecords.filter(r => r.date.startsWith(y));
+          filtered = expenseRecords.filter(r => toLocalYMD(r.date).startsWith(y));
       }
 
       const total = filtered.reduce((a, b) => a + b.value, 0);
-      const uniqueDays = period === 'day' ? 1 : new Set(filtered.map(r => r.date.split('T')[0])).size;
+      const uniqueDays = period === 'day' ? 1 : new Set(filtered.map(r => toLocalYMD(r.date))).size;
       const avg = uniqueDays > 0 ? total / uniqueDays : 0;
 
       return { total, avg, records: filtered };
@@ -91,11 +111,15 @@ export const ExpensesPage: React.FC = () => {
   const statsYear = getStats('year');
 
   const chartData = Array.from({length: 7}, (_, i) => {
-    const d = new Date(selectedDate);
+    const d = new Date(selectedDate + 'T00:00:00');
     d.setDate(d.getDate() - (6 - i));
-    const dateStr = d.toISOString().split('T')[0];
+    const year = d.getFullYear();
+    const month = String(d.getMonth() + 1).padStart(2, '0');
+    const day = String(d.getDate()).padStart(2, '0');
+    const dateStr = `${year}-${month}-${day}`;
+
     const dailyTotal = expenseRecords
-      .filter(r => r.date.startsWith(dateStr))
+      .filter(r => toLocalYMD(r.date) === dateStr)
       .reduce((acc, curr) => acc + curr.value, 0);
     return { date: dateStr.slice(5), amount: dailyTotal };
   });
