@@ -21,12 +21,19 @@ export const WorkTimerPage: React.FC = () => {
   const [category, setCategory] = useState('Deep Work');
   const [note, setNote] = useState('');
   
-  const getTodayShifted = () => {
-    const d = new Date();
-    d.setHours(d.getHours() - 6);
-    return d.toISOString().split('T')[0];
+  // Helper to get Local YYYY-MM-DD string to avoid UTC conversion issues
+  const toLocalYMD = (d: Date) => {
+    const year = d.getFullYear();
+    const month = String(d.getMonth() + 1).padStart(2, '0');
+    const day = String(d.getDate()).padStart(2, '0');
+    return `${year}-${month}-${day}`;
   };
-  const [selectedDate, setSelectedDate] = useState(getTodayShifted());
+
+  const getToday = () => {
+    // Directly use local time. No -6 hours offset. No UTC conversion.
+    return toLocalYMD(new Date());
+  };
+  const [selectedDate, setSelectedDate] = useState(getToday());
   
   const timerIntervalRef = useRef<ReturnType<typeof setInterval> | null>(null);
 
@@ -158,68 +165,75 @@ export const WorkTimerPage: React.FC = () => {
     return `${h.toString().padStart(2, '0')}:${m.toString().padStart(2, '0')}:${s.toString().padStart(2, '0')}`;
   };
 
-  const getShiftedDateStr = (dateString: string) => {
-    const d = new Date(dateString);
-    d.setHours(d.getHours() - 6); 
-    return d.toISOString().split('T')[0];
-  };
-
   const changeDate = (offset: number) => {
-    const d = new Date(selectedDate);
+    // Append T00:00:00 to force local parsing so setDate works on local time
+    const d = new Date(selectedDate + 'T00:00:00');
     d.setDate(d.getDate() + offset);
-    setSelectedDate(d.toISOString().split('T')[0]);
+    setSelectedDate(toLocalYMD(d));
   };
   
-  const isTodaySelected = selectedDate === getTodayShifted();
+  const isTodaySelected = selectedDate === getToday();
 
   const workRecords = records.filter(r => r.type === RecordType.WORK);
   
+  // Align record filtering with the same standard "local date" logic
+  const getRecordDateStr = (dateString: string) => {
+    const d = new Date(dateString);
+    return toLocalYMD(d);
+  };
+
   const selectedDayTotal = workRecords
-    .filter(r => getShiftedDateStr(r.date) === selectedDate)
+    .filter(r => getRecordDateStr(r.date) === selectedDate)
     .reduce((a, b) => a + b.value, 0);
 
   const selectedDayLogs = workRecords
-    .filter(r => getShiftedDateStr(r.date) === selectedDate)
+    .filter(r => getRecordDateStr(r.date) === selectedDate)
     .sort((a, b) => new Date(b.date).getTime() - new Date(a.date).getTime());
 
   const getStatsForPeriod = (startStr: string, endStr: string) => { 
      const filtered = workRecords.filter(r => {
-        const d = getShiftedDateStr(r.date);
+        const d = getRecordDateStr(r.date);
         return d >= startStr && d <= endStr;
      });
      const total = filtered.reduce((a, b) => a + b.value, 0);
-     const uniqueDays = new Set(filtered.map(r => getShiftedDateStr(r.date))).size;
+     const uniqueDays = new Set(filtered.map(r => getRecordDateStr(r.date))).size;
      return { total, avg: uniqueDays > 0 ? total / uniqueDays : 0 };
   };
 
-  const selectedDateObj = new Date(selectedDate);
+  // Logic to calculate weeks/months based on selectedDate
+  const selectedDateObj = new Date(selectedDate + 'T00:00:00');
+  
+  // Current Week (Last 7 days ending today/selected)
   const weekStart = new Date(selectedDateObj);
   weekStart.setDate(weekStart.getDate() - 6);
-  const statsCurrentWeek = getStatsForPeriod(weekStart.toISOString().split('T')[0], selectedDate);
+  const statsCurrentWeek = getStatsForPeriod(toLocalYMD(weekStart), selectedDate);
 
+  // Previous Week
   const prevWeekEnd = new Date(weekStart);
   prevWeekEnd.setDate(prevWeekEnd.getDate() - 1);
   const prevWeekStart = new Date(prevWeekEnd);
   prevWeekStart.setDate(prevWeekStart.getDate() - 6);
-  const statsPrevWeek = getStatsForPeriod(prevWeekStart.toISOString().split('T')[0], prevWeekEnd.toISOString().split('T')[0]);
+  const statsPrevWeek = getStatsForPeriod(toLocalYMD(prevWeekStart), toLocalYMD(prevWeekEnd));
 
+  // Month
   const monthStart = new Date(selectedDateObj.getFullYear(), selectedDateObj.getMonth(), 1);
   const monthEnd = new Date(selectedDateObj.getFullYear(), selectedDateObj.getMonth() + 1, 0);
-  const statsMonth = getStatsForPeriod(monthStart.toISOString().split('T')[0], monthEnd.toISOString().split('T')[0]);
+  const statsMonth = getStatsForPeriod(toLocalYMD(monthStart), toLocalYMD(monthEnd));
 
+  // Year
   const yearStart = new Date(selectedDateObj.getFullYear(), 0, 1);
   const yearEnd = new Date(selectedDateObj.getFullYear(), 11, 31);
-  const statsYear = getStatsForPeriod(yearStart.toISOString().split('T')[0], yearEnd.toISOString().split('T')[0]);
+  const statsYear = getStatsForPeriod(toLocalYMD(yearStart), toLocalYMD(yearEnd));
 
   const weekDiff = statsCurrentWeek.total - statsPrevWeek.total;
   const weekDiffPercent = statsPrevWeek.total > 0 ? (weekDiff / statsPrevWeek.total) * 100 : 0;
 
   const chartData = Array.from({length: 7}, (_, i) => {
-    const d = new Date(selectedDate);
+    const d = new Date(selectedDate + 'T00:00:00');
     d.setDate(d.getDate() - (6 - i));
-    const labelDate = d.toISOString().split('T')[0]; 
+    const labelDate = toLocalYMD(d); 
     const dailyTotal = workRecords
-      .filter(r => getShiftedDateStr(r.date) === labelDate)
+      .filter(r => getRecordDateStr(r.date) === labelDate)
       .reduce((acc, curr) => acc + curr.value, 0);
     return { date: labelDate.slice(5), hours: dailyTotal };
   });
@@ -285,7 +299,7 @@ export const WorkTimerPage: React.FC = () => {
               <div className="absolute inset-0 bg-white/60 backdrop-blur-[2px] z-10 flex flex-col items-center justify-center rounded-3xl">
                   <Clock size={48} className="text-[#8E5E73] mb-4 opacity-50"/>
                   <p className="text-[#8E5E73] font-medium">您正在查看历史记录</p>
-                  <button onClick={() => setSelectedDate(getTodayShifted())} className="mt-2 text-sm underline text-gray-500 hover:text-gray-800">回到今天进行计时</button>
+                  <button onClick={() => setSelectedDate(getToday())} className="mt-2 text-sm underline text-gray-500 hover:text-gray-800">回到今天进行计时</button>
               </div>
           )}
 
