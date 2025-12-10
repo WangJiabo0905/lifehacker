@@ -28,6 +28,14 @@ export interface Dream {
   title: string;
 }
 
+export interface MasteryGoal {
+  id: string;
+  title: string;
+  query: string; // Comma separated keywords, e.g. "Coding, React"
+  createdAt: string;
+  themeColor?: string;
+}
+
 export interface FinanceState {
   totalIncome: number;
   ratios: {
