@@ -6,7 +6,10 @@ import { StorageService } from '../services/storageService';
 import { BarChart, Bar, XAxis, Tooltip, ResponsiveContainer } from 'recharts';
 
 export const DailyPlanPage: React.FC = () => {
-  const today = new Date().toISOString().split('T')[0];
+  // Use local time for "today" instead of UTC to avoid date shift bugs in early mornings
+  const d = new Date();
+  const today = `${d.getFullYear()}-${String(d.getMonth() + 1).padStart(2, '0')}-${String(d.getDate()).padStart(2, '0')}`;
+  
   const [currentDate, setCurrentDate] = useState(today);
   const [plan, setPlan] = useState<DailyPlan>({ date: today, tasks: [], review: '', harvest: '' });
   const [newTask, setNewTask] = useState('');
@@ -59,9 +62,12 @@ export const DailyPlanPage: React.FC = () => {
   }));
 
   const changeDay = (offset: number) => {
-      const d = new Date(currentDate);
+      const d = new Date(currentDate + 'T00:00:00'); // Force local time
       d.setDate(d.getDate() + offset);
-      setCurrentDate(d.toISOString().split('T')[0]);
+      const year = d.getFullYear();
+      const month = String(d.getMonth() + 1).padStart(2, '0');
+      const day = String(d.getDate()).padStart(2, '0');
+      setCurrentDate(`${year}-${month}-${day}`);
   };
 
   return (
