@@ -17,25 +17,13 @@ function App() {
   // Initialize to false to FORCE Dream Board on every reload
   const [hasEntered, setHasEntered] = useState(false);
 
-  // REMOVED: Session check. We want the user to see the Dream Board EVERY time they load the app.
-  /*
-  useEffect(() => {
-    const sessionEntered = sessionStorage.getItem('essence_entered');
-    if (sessionEntered) {
-      setHasEntered(true);
-      setView('plan'); 
-    }
-  }, []);
-  */
-
   const handleEnterApp = () => {
-    // We don't save to session anymore, so a refresh will trigger the dream board again.
     setHasEntered(true);
-    setView('plan'); // Go to Daily Plan immediately after dreams
+    setView('plan'); 
   };
 
   const renderContent = () => {
-    // If not entered, force Dream Board in Gatekeeper mode
+    // Gatekeeper: If user hasn't entered via Dream Board, show it in Gatekeeper mode
     if (!hasEntered) {
       return <DreamBoard onEnterApp={handleEnterApp} isGatekeeper={true} />;
     }
