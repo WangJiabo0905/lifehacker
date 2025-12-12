@@ -177,6 +177,26 @@ export const StorageService = {
     allPlans[plan.date] = plan;
     await set(KEYS.PLANS, allPlans);
   },
+  savePlansBulk: async (plans: DailyPlan[]) => {
+    const allPlans = await get<Record<string, DailyPlan>>(KEYS.PLANS, {});
+    plans.forEach(plan => {
+      // If plan exists for this date, merge tasks; otherwise create new
+      const existing = allPlans[plan.date];
+      if (existing) {
+        // Prevent duplicate task text for the same day
+        const existingTexts = new Set(existing.tasks.map(t => t.text));
+        const uniqueNewTasks = plan.tasks.filter(t => !existingTexts.has(t.text));
+        
+        allPlans[plan.date] = {
+          ...existing,
+          tasks: [...existing.tasks, ...uniqueNewTasks]
+        };
+      } else {
+        allPlans[plan.date] = plan;
+      }
+    });
+    await set(KEYS.PLANS, allPlans);
+  },
   getAllPlans: () => get<Record<string, DailyPlan>>(KEYS.PLANS, {}),
 
   // Mastery Goals
