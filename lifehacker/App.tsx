@@ -1,3 +1,4 @@
+
 import React, { useState, useEffect } from 'react';
 import { HashRouter } from 'react-router-dom';
 import { Layout } from './components/Layout';
@@ -13,20 +14,22 @@ import { PageView } from './types';
 
 function App() {
   const [view, setView] = useState<PageView>('dreams_view');
-  // We use a session storage flag to track if the user has "entered" the app for this session.
-  // This enforces the "Dream First" rule.
+  // Initialize to false to FORCE Dream Board on every reload
   const [hasEntered, setHasEntered] = useState(false);
 
+  // REMOVED: Session check. We want the user to see the Dream Board EVERY time they load the app.
+  /*
   useEffect(() => {
     const sessionEntered = sessionStorage.getItem('essence_entered');
     if (sessionEntered) {
       setHasEntered(true);
-      setView('plan'); // Default to plan if already entered
+      setView('plan'); 
     }
   }, []);
+  */
 
   const handleEnterApp = () => {
-    sessionStorage.setItem('essence_entered', 'true');
+    // We don't save to session anymore, so a refresh will trigger the dream board again.
     setHasEntered(true);
     setView('plan'); // Go to Daily Plan immediately after dreams
   };
