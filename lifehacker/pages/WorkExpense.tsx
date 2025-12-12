@@ -1,1 +1,1 @@
-// Deprecated. See WorkTimer.tsx and Expenses.tsx
+// File removed. Please use WorkTimer.tsx and Expenses.tsx instead.
