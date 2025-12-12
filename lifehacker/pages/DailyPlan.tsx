@@ -1,6 +1,6 @@
 
 import React, { useEffect, useState } from 'react';
-import { CheckCircle, Plus, ChevronLeft, ChevronRight, Calendar as CalendarIcon, X, Repeat, Check, CalendarDays } from 'lucide-react';
+import { CheckCircle, Plus, ChevronLeft, ChevronRight, Calendar as CalendarIcon, X, Repeat, Check, CalendarDays, Trash2, AlertTriangle, Eraser, Loader, Layers } from 'lucide-react';
 import { DailyPlan } from '../types';
 import { StorageService } from '../services/storageService';
 import { BarChart, Bar, XAxis, Tooltip, ResponsiveContainer } from 'recharts';
@@ -38,6 +38,13 @@ export const DailyPlanPage: React.FC = () => {
   const [batchEndDate, setBatchEndDate] = useState(today);
   const [isSavingBatch, setIsSavingBatch] = useState(false);
 
+  // --- Batch Delete Modal State ---
+  const [isDeleteModalOpen, setIsDeleteModalOpen] = useState(false);
+  const [isDeletingBatch, setIsDeletingBatch] = useState(false);
+  const [foundTasks, setFoundTasks] = useState<{text: string, count: number}[]>([]);
+  const [selectedDeleteTasks, setSelectedDeleteTasks] = useState<Set<string>>(new Set());
+  const [isScanning, setIsScanning] = useState(false);
+
   useEffect(() => {
     const loadData = async () => {
         const existing = await StorageService.getPlan(currentDate);
@@ -57,13 +64,31 @@ export const DailyPlanPage: React.FC = () => {
   useEffect(() => {
       if (isBatchModalOpen) {
           setBatchStartDate(currentDate);
-          setBatchEndDate(currentDate); // Reset end date default
+          setBatchEndDate(currentDate); 
       }
-  }, [isBatchModalOpen, currentDate]);
+      if (isDeleteModalOpen) {
+          setSelectedDeleteTasks(new Set());
+          scanTasks();
+      }
+  }, [isBatchModalOpen, isDeleteModalOpen, currentDate]);
+
+  const scanTasks = async () => {
+      setIsScanning(true);
+      try {
+          // Now using global stats, no date range needed
+          const stats = await StorageService.getAllTaskStats();
+          setFoundTasks(stats);
+      } finally {
+          setIsScanning(false);
+      }
+  };
 
   const save = async (updated: DailyPlan) => {
     setPlan(updated);
     await StorageService.savePlan(updated);
+    // Refresh history chart immediately
+    const allPlans = await StorageService.getAllPlans();
+    setHistory(Object.values(allPlans).sort((a,b) => a.date.localeCompare(b.date)));
   };
 
   const addTask = async (e: React.FormEvent) => {
@@ -85,26 +110,32 @@ export const DailyPlanPage: React.FC = () => {
     await save(updated);
   };
 
-  // --- Batch Algorithm ---
+  const removeTask = async (e: React.MouseEvent, id: string) => {
+      // IMPORTANT: Stop propagation to prevent triggering toggleTask on parent div
+      e.stopPropagation();
+      e.preventDefault();
+      
+      // Removed native confirm() dialog as it can feel unresponsive or be blocked
+      const updated = {
+          ...plan,
+          tasks: plan.tasks.filter(t => t.id !== id)
+      };
+      await save(updated);
+  };
+
+  // --- Batch Add Algorithm ---
   const handleBatchSave = async () => {
       if (!batchTask.trim()) return;
       setIsSavingBatch(true);
 
       try {
-          // Calculate Date Range
           const start = new Date(batchStartDate + 'T00:00:00');
           let end = new Date(batchStartDate + 'T00:00:00');
 
-          if (batchType === 'WEEK') {
-              end.setDate(start.getDate() + 6);
-          } else if (batchType === 'MONTH') {
-              end.setDate(start.getDate() + 29);
-          } else if (batchType === 'YEAR') {
-              end.setDate(start.getDate() + 364);
-          } else if (batchType === 'CUSTOM') {
-              end = new Date(batchEndDate + 'T00:00:00');
-          }
-          // 'SINGLE' means start == end, which is default
+          if (batchType === 'WEEK') end.setDate(start.getDate() + 6);
+          else if (batchType === 'MONTH') end.setDate(start.getDate() + 29);
+          else if (batchType === 'YEAR') end.setDate(start.getDate() + 364);
+          else if (batchType === 'CUSTOM') end = new Date(batchEndDate + 'T00:00:00');
 
           if (end < start) {
               alert("结束日期不能早于开始日期");
@@ -113,14 +144,8 @@ export const DailyPlanPage: React.FC = () => {
           }
 
           const plansToSave: DailyPlan[] = [];
-          
-          // Loop through dates
           for (let d = new Date(start); d <= end; d.setDate(d.getDate() + 1)) {
-              const yyyy = d.getFullYear();
-              const mm = String(d.getMonth() + 1).padStart(2, '0');
-              const dd = String(d.getDate()).padStart(2, '0');
-              const dateStr = `${yyyy}-${mm}-${dd}`;
-
+              const dateStr = d.toISOString().split('T')[0];
               plansToSave.push({
                   date: dateStr,
                   tasks: [{ id: Date.now() + Math.random().toString(), text: batchTask, completed: false }],
@@ -129,30 +154,60 @@ export const DailyPlanPage: React.FC = () => {
               });
           }
 
-          // Bulk Save
           await StorageService.savePlansBulk(plansToSave);
 
-          // Refresh current day view if affected
-          const currentAffected = plansToSave.find(p => p.date === currentDate);
-          if (currentAffected) {
-               const reloaded = await StorageService.getPlan(currentDate);
-               if (reloaded) setPlan(reloaded);
-          }
+          const reloaded = await StorageService.getPlan(currentDate);
+          if (reloaded) setPlan(reloaded);
           
-          // Refresh charts
           const allPlans = await StorageService.getAllPlans();
           setHistory(Object.values(allPlans).sort((a,b) => a.date.localeCompare(b.date)));
 
-          // Close and Reset
           setIsBatchModalOpen(false);
           setBatchTask('');
           setBatchType('SINGLE');
-
       } catch (error) {
           console.error(error);
           alert("保存失败");
       } finally {
           setIsSavingBatch(false);
+      }
+  };
+
+  // --- Batch Delete Algorithm ---
+  const toggleDeleteSelection = (text: string) => {
+      const newSet = new Set(selectedDeleteTasks);
+      if (newSet.has(text)) {
+          newSet.delete(text);
+      } else {
+          newSet.add(text);
+      }
+      setSelectedDeleteTasks(newSet);
+  };
+
+  const handleBatchDelete = async () => {
+      if (selectedDeleteTasks.size === 0) return;
+      
+      // Removed confirm() since user is already in a specific delete modal clicking a red button
+      setIsDeletingBatch(true);
+      try {
+          await StorageService.deleteTasksGlobal(Array.from(selectedDeleteTasks));
+
+          // Refresh UI
+          const reloaded = await StorageService.getPlan(currentDate);
+          if (reloaded) setPlan(reloaded);
+          
+          const allPlans = await StorageService.getAllPlans();
+          setHistory(Object.values(allPlans).sort((a,b) => a.date.localeCompare(b.date)));
+
+          // Optional: simple feedback or just close modal
+          // alert("删除成功！"); 
+          setIsDeleteModalOpen(false);
+          setSelectedDeleteTasks(new Set());
+      } catch (e) {
+          console.error(e);
+          alert("删除失败");
+      } finally {
+          setIsDeletingBatch(false);
       }
   };
 
@@ -164,7 +219,7 @@ export const DailyPlanPage: React.FC = () => {
   }));
 
   const changeDay = (offset: number) => {
-      const d = new Date(currentDate + 'T00:00:00'); // Force local time
+      const d = new Date(currentDate + 'T00:00:00'); 
       d.setDate(d.getDate() + offset);
       const year = d.getFullYear();
       const month = String(d.getMonth() + 1).padStart(2, '0');
@@ -175,7 +230,7 @@ export const DailyPlanPage: React.FC = () => {
   return (
     <div className="space-y-8 animate-fade-in pb-12 relative">
       
-      {/* Batch Plan Modal */}
+      {/* Batch Plan Modal (ADD) */}
       {isBatchModalOpen && (
         <div className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-black/60 backdrop-blur-md animate-fade-in">
           <div className="bg-white rounded-3xl w-full max-w-lg shadow-2xl p-6 relative overflow-hidden flex flex-col max-h-[90vh]">
@@ -194,7 +249,6 @@ export const DailyPlanPage: React.FC = () => {
             </div>
             
             <div className="space-y-6 flex-1 overflow-y-auto custom-scrollbar p-1">
-                {/* Input Task */}
                 <div>
                     <label className="block text-xs font-bold text-gray-400 uppercase mb-2">计划内容</label>
                     <textarea
@@ -206,7 +260,6 @@ export const DailyPlanPage: React.FC = () => {
                     />
                 </div>
 
-                {/* Duration Select */}
                 <div>
                     <label className="block text-xs font-bold text-gray-400 uppercase mb-2">持续时间 / 频率</label>
                     <div className="flex gap-2 mb-2">
@@ -220,7 +273,6 @@ export const DailyPlanPage: React.FC = () => {
                     </div>
                 </div>
 
-                {/* Date Pickers */}
                 <div className="bg-[#F5F5F7] rounded-xl p-4 flex items-center gap-4">
                     <div className="flex-1">
                         <label className="block text-[10px] font-bold text-gray-400 uppercase mb-1">开始日期</label>
@@ -266,18 +318,110 @@ export const DailyPlanPage: React.FC = () => {
         </div>
       )}
 
+      {/* Batch Delete Modal (Global Scan) */}
+      {isDeleteModalOpen && (
+        <div className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-black/60 backdrop-blur-md animate-fade-in">
+          <div className="bg-white rounded-3xl w-full max-w-lg shadow-2xl p-6 relative overflow-hidden flex flex-col max-h-[90vh] border-2 border-red-50">
+            <button 
+              onClick={() => setIsDeleteModalOpen(false)}
+              className="absolute top-4 right-4 text-gray-400 hover:text-gray-600 transition-colors z-10"
+            >
+              <X size={20} />
+            </button>
+            
+            <div className="flex items-center gap-3 mb-6">
+              <div className="bg-red-50 p-2.5 rounded-xl text-red-500 shadow-sm border border-red-100">
+                <Trash2 size={20} />
+              </div>
+              <h3 className="text-xl font-bold text-gray-800">批量移除任务</h3>
+            </div>
+
+            <div className="bg-orange-50 p-4 rounded-xl mb-4 flex gap-3 border border-orange-100">
+                <AlertTriangle className="text-orange-500 flex-shrink-0" size={20}/>
+                <p className="text-xs text-orange-800 leading-relaxed">
+                   系统已自动扫描整个项目周期内的所有任务。选中项目后，该任务的<strong>所有历史记录</strong>将被永久删除。
+                </p>
+            </div>
+            
+            {/* Task List */}
+            <div className="flex-1 overflow-y-auto custom-scrollbar p-1 min-h-[300px] mb-4">
+                <div className="flex justify-between items-center mb-2 px-1">
+                    <span className="text-xs font-bold text-gray-400 uppercase flex items-center gap-1">
+                        <Layers size={12}/>
+                        全部任务 ({foundTasks.length})
+                    </span>
+                    {selectedDeleteTasks.size > 0 && <span className="text-xs text-red-500 font-bold">已选 {selectedDeleteTasks.size} 类</span>}
+                </div>
+
+                {isScanning ? (
+                    <div className="flex items-center justify-center py-10 text-gray-400 gap-2">
+                        <Loader className="animate-spin" size={20}/>
+                        <span>正在全库扫描...</span>
+                    </div>
+                ) : foundTasks.length === 0 ? (
+                    <div className="text-center py-10 text-gray-400 text-sm bg-gray-50 rounded-xl border border-dashed border-gray-200">
+                        暂无任何任务记录。
+                    </div>
+                ) : (
+                    <div className="space-y-2">
+                        {foundTasks.map((item) => {
+                            const isSelected = selectedDeleteTasks.has(item.text);
+                            return (
+                                <div 
+                                    key={item.text}
+                                    onClick={() => toggleDeleteSelection(item.text)}
+                                    className={`p-3 rounded-xl border flex items-center justify-between cursor-pointer transition-all select-none ${isSelected ? 'bg-red-50 border-red-200 shadow-sm' : 'bg-white border-gray-100 hover:border-gray-300'}`}
+                                >
+                                    <div className="flex items-center gap-3 overflow-hidden">
+                                        <div className={`w-5 h-5 rounded-md border flex items-center justify-center transition-colors flex-shrink-0 ${isSelected ? 'bg-red-500 border-red-500' : 'border-gray-300 bg-white'}`}>
+                                            {isSelected && <Check size={12} className="text-white"/>}
+                                        </div>
+                                        <span className={`truncate font-medium transition-colors ${isSelected ? 'text-red-900' : 'text-gray-700'}`}>{item.text}</span>
+                                    </div>
+                                    <span className={`text-[10px] px-2 py-1 rounded-full whitespace-nowrap font-medium ${isSelected ? 'bg-red-100 text-red-600' : 'bg-gray-100 text-gray-500'}`}>
+                                        {item.count} 次记录
+                                    </span>
+                                </div>
+                            );
+                        })}
+                    </div>
+                )}
+            </div>
+
+            <button
+                onClick={handleBatchDelete}
+                disabled={selectedDeleteTasks.size === 0 || isDeletingBatch}
+                className="w-full bg-red-500 text-white py-4 rounded-xl font-bold flex items-center justify-center gap-2 hover:bg-red-600 transition-all disabled:opacity-50 disabled:cursor-not-allowed shadow-lg hover:shadow-xl hover:-translate-y-0.5"
+            >
+                {isDeletingBatch ? <Repeat className="animate-spin" size={18}/> : <Trash2 size={18} />}
+                {isDeletingBatch ? "清理中..." : `删除选中任务的所有记录`}
+            </button>
+          </div>
+        </div>
+      )}
+
       <header className="flex justify-between items-center">
         <div>
           <div className="flex items-center gap-3">
              <h2 className="text-3xl font-bold text-white">今日计划与复盘</h2>
-             <button 
-               onClick={() => setIsBatchModalOpen(true)}
-               className="bg-white/10 hover:bg-white/20 text-white p-2 rounded-xl transition-colors backdrop-blur-md border border-white/5 group flex items-center gap-2 px-3"
-               title="批量添加计划"
-             >
-               <CalendarDays size={18} className="text-yellow-200 group-hover:scale-110 transition-transform" />
-               <span className="text-xs font-medium text-white/80 hidden md:inline">批量/周期规划</span>
-             </button>
+             <div className="flex gap-2">
+                 <button 
+                onClick={() => setIsBatchModalOpen(true)}
+                className="bg-white/10 hover:bg-white/20 text-white p-2 rounded-xl transition-colors backdrop-blur-md border border-white/5 group flex items-center gap-2 px-3"
+                title="批量添加计划"
+                >
+                <CalendarDays size={18} className="text-yellow-200 group-hover:scale-110 transition-transform" />
+                <span className="text-xs font-medium text-white/80 hidden md:inline">批量/周期规划</span>
+                </button>
+                <button 
+                onClick={() => setIsDeleteModalOpen(true)}
+                className="bg-white/10 hover:bg-red-500/20 text-white p-2 rounded-xl transition-colors backdrop-blur-md border border-white/5 group flex items-center gap-2 px-3"
+                title="批量清理计划"
+                >
+                <Eraser size={18} className="text-red-200 group-hover:scale-110 transition-transform" />
+                <span className="text-xs font-medium text-white/80 hidden md:inline">批量移除</span>
+                </button>
+             </div>
           </div>
           <div className="flex items-center gap-4 mt-2 text-white/90">
              <button onClick={() => changeDay(-1)} className="p-1 hover:bg-white/20 rounded-full transition-colors"><ChevronLeft size={16}/></button>
@@ -318,13 +462,32 @@ export const DailyPlanPage: React.FC = () => {
 
             <div className="space-y-3">
               {plan.tasks.map(task => (
-                <div key={task.id} className="group flex items-center gap-4 p-4 hover:bg-gray-50 rounded-2xl transition-all cursor-pointer border border-transparent hover:border-gray-100" onClick={() => toggleTask(task.id)}>
-                  <div className={`w-6 h-6 rounded-full border-2 flex items-center justify-center transition-all duration-300 ${task.completed ? 'bg-[#8E5E73] border-[#8E5E73] scale-110' : 'border-gray-300 group-hover:border-[#8E5E73]/50'}`}>
+                <div key={task.id} className="group flex items-center gap-4 p-4 hover:bg-gray-50 rounded-2xl transition-all border border-transparent hover:border-gray-100">
+                  {/* Checkbox Area - Clickable */}
+                  <div 
+                    onClick={() => toggleTask(task.id)}
+                    className={`w-6 h-6 rounded-full border-2 flex items-center justify-center transition-all duration-300 cursor-pointer ${task.completed ? 'bg-[#8E5E73] border-[#8E5E73] scale-110' : 'border-gray-300 group-hover:border-[#8E5E73]/50'}`}
+                  >
                     {task.completed && <CheckCircle size={14} className="text-white" />}
                   </div>
-                  <span className={`text-lg transition-all ${task.completed ? 'text-gray-400 line-through decoration-gray-300' : 'text-gray-800'}`}>
+                  
+                  {/* Text Area - Clickable */}
+                  <span 
+                    onClick={() => toggleTask(task.id)}
+                    className={`text-lg transition-all flex-1 cursor-pointer ${task.completed ? 'text-gray-400 line-through decoration-gray-300' : 'text-gray-800'}`}
+                  >
                     {task.text}
                   </span>
+                  
+                  {/* Single Delete Button - Independent & Visible & Protected Event */}
+                  <button 
+                    type="button"
+                    onClick={(e) => removeTask(e, task.id)}
+                    className="p-2 text-gray-300 hover:text-red-500 hover:bg-red-50 rounded-full transition-all relative z-10 cursor-pointer"
+                    title="删除"
+                  >
+                      <Trash2 size={18} />
+                  </button>
                 </div>
               ))}
               {plan.tasks.length === 0 && (

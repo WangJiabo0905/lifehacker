@@ -197,6 +197,59 @@ export const StorageService = {
     });
     await set(KEYS.PLANS, allPlans);
   },
+  
+  // NEW: Get statistics of ALL tasks in the DB
+  getAllTaskStats: async () => {
+      const allPlans = await get<Record<string, DailyPlan>>(KEYS.PLANS, {});
+      const stats: Record<string, number> = {};
+      
+      Object.values(allPlans).forEach(plan => {
+          plan.tasks.forEach(t => {
+              const txt = t.text.trim();
+              if (txt) {
+                stats[txt] = (stats[txt] || 0) + 1;
+              }
+          });
+      });
+      // Return array sorted by count desc
+      return Object.entries(stats)
+          .map(([text, count]) => ({ text, count }))
+          .sort((a, b) => b.count - a.count);
+  },
+
+  // NEW: Bulk Delete globally (all dates)
+  deleteTasksGlobal: async (taskTexts: string[]) => {
+      const allPlans = await get<Record<string, DailyPlan>>(KEYS.PLANS, {});
+      let hasChanges = false;
+      const targetSet = new Set(taskTexts);
+
+      Object.keys(allPlans).forEach(dateStr => {
+          const plan = allPlans[dateStr];
+          const originalLength = plan.tasks.length;
+          
+          // Filter out tasks that are in the targetSet
+          const newTasks = plan.tasks.filter(t => !targetSet.has(t.text.trim()));
+
+          if (newTasks.length !== originalLength) {
+              allPlans[dateStr] = {
+                  ...plan,
+                  tasks: newTasks
+              };
+              hasChanges = true;
+          }
+      });
+
+      if (hasChanges) {
+          await set(KEYS.PLANS, allPlans);
+      }
+      return hasChanges;
+  },
+
+  // Keep legacy for safety
+  getTaskStats: async (startDate: string, endDate: string) => {
+    return StorageService.getAllTaskStats(); // Redirect to global for now or keep logic if needed
+  },
+
   getAllPlans: () => get<Record<string, DailyPlan>>(KEYS.PLANS, {}),
 
   // Mastery Goals
