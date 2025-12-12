@@ -1,9 +1,24 @@
 
 import React, { useEffect, useState } from 'react';
-import { CheckCircle, Plus, ChevronLeft, ChevronRight, Calendar as CalendarIcon, X, CalendarRange, Repeat, Check } from 'lucide-react';
+import { CheckCircle, Plus, ChevronLeft, ChevronRight, Calendar as CalendarIcon, X, Repeat, Check, CalendarDays } from 'lucide-react';
 import { DailyPlan } from '../types';
 import { StorageService } from '../services/storageService';
 import { BarChart, Bar, XAxis, Tooltip, ResponsiveContainer } from 'recharts';
+
+// Moved outside to prevent re-creation on every render
+const OptionBtn = ({ type, label, days, currentType, setType }: { type: string, label: string, days?: string, currentType: string, setType: (t: any) => void }) => (
+  <button
+    onClick={() => setType(type)}
+    className={`flex-1 py-3 px-2 rounded-xl text-sm font-medium border transition-all flex flex-col items-center justify-center gap-1 ${
+        currentType === type 
+        ? 'bg-[#8E5E73] text-white border-[#8E5E73] shadow-md transform scale-105' 
+        : 'bg-white border-gray-200 text-gray-500 hover:border-gray-300 hover:bg-gray-50'
+    }`}
+  >
+      <span>{label}</span>
+      {days && <span className={`text-[10px] ${currentType === type ? 'text-white/70' : 'text-gray-300'}`}>{days}</span>}
+  </button>
+);
 
 export const DailyPlanPage: React.FC = () => {
   // Use local time for "today" instead of UTC to avoid date shift bugs in early mornings
@@ -100,7 +115,6 @@ export const DailyPlanPage: React.FC = () => {
           const plansToSave: DailyPlan[] = [];
           
           // Loop through dates
-          // Clone start date iterator to avoid modifying original start date reference if needed later
           for (let d = new Date(start); d <= end; d.setDate(d.getDate() + 1)) {
               const yyyy = d.getFullYear();
               const mm = String(d.getMonth() + 1).padStart(2, '0');
@@ -115,7 +129,7 @@ export const DailyPlanPage: React.FC = () => {
               });
           }
 
-          // Bulk Save (StorageService handles merging)
+          // Bulk Save
           await StorageService.savePlansBulk(plansToSave);
 
           // Refresh current day view if affected
@@ -158,20 +172,6 @@ export const DailyPlanPage: React.FC = () => {
       setCurrentDate(`${year}-${month}-${day}`);
   };
 
-  const OptionBtn = ({ type, label, days }: { type: typeof batchType, label: string, days?: string }) => (
-      <button
-        onClick={() => setBatchType(type)}
-        className={`flex-1 py-3 px-2 rounded-xl text-sm font-medium border transition-all flex flex-col items-center justify-center gap-1 ${
-            batchType === type 
-            ? 'bg-[#8E5E73] text-white border-[#8E5E73] shadow-md transform scale-105' 
-            : 'bg-white border-gray-200 text-gray-500 hover:border-gray-300 hover:bg-gray-50'
-        }`}
-      >
-          <span>{label}</span>
-          {days && <span className={`text-[10px] ${batchType === type ? 'text-white/70' : 'text-gray-300'}`}>{days}</span>}
-      </button>
-  );
-
   return (
     <div className="space-y-8 animate-fade-in pb-12 relative">
       
@@ -188,7 +188,7 @@ export const DailyPlanPage: React.FC = () => {
             
             <div className="flex items-center gap-3 mb-6">
               <div className="bg-gradient-to-br from-[#8E5E73] to-[#b37a92] p-2.5 rounded-xl text-white shadow-lg">
-                <CalendarRange size={20} />
+                <CalendarDays size={20} />
               </div>
               <h3 className="text-xl font-bold text-gray-800">快速批量规划</h3>
             </div>
@@ -210,13 +210,13 @@ export const DailyPlanPage: React.FC = () => {
                 <div>
                     <label className="block text-xs font-bold text-gray-400 uppercase mb-2">持续时间 / 频率</label>
                     <div className="flex gap-2 mb-2">
-                        <OptionBtn type="SINGLE" label="仅一次" days="Selected Day" />
-                        <OptionBtn type="WEEK" label="未来一周" days="7 Days" />
-                        <OptionBtn type="MONTH" label="未来一月" days="30 Days" />
+                        <OptionBtn type="SINGLE" label="仅一次" days="Selected Day" currentType={batchType} setType={setBatchType} />
+                        <OptionBtn type="WEEK" label="未来一周" days="7 Days" currentType={batchType} setType={setBatchType} />
+                        <OptionBtn type="MONTH" label="未来一月" days="30 Days" currentType={batchType} setType={setBatchType} />
                     </div>
                     <div className="flex gap-2">
-                         <OptionBtn type="YEAR" label="全年" days="365 Days" />
-                         <OptionBtn type="CUSTOM" label="自定义" days="Range" />
+                         <OptionBtn type="YEAR" label="全年" days="365 Days" currentType={batchType} setType={setBatchType} />
+                         <OptionBtn type="CUSTOM" label="自定义" days="Range" currentType={batchType} setType={setBatchType} />
                     </div>
                 </div>
 
@@ -275,7 +275,7 @@ export const DailyPlanPage: React.FC = () => {
                className="bg-white/10 hover:bg-white/20 text-white p-2 rounded-xl transition-colors backdrop-blur-md border border-white/5 group flex items-center gap-2 px-3"
                title="批量添加计划"
              >
-               <CalendarRange size={18} className="text-yellow-200 group-hover:scale-110 transition-transform" />
+               <CalendarDays size={18} className="text-yellow-200 group-hover:scale-110 transition-transform" />
                <span className="text-xs font-medium text-white/80 hidden md:inline">批量/周期规划</span>
              </button>
           </div>
