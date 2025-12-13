@@ -106,12 +106,18 @@ const set = async (key: string, value: any): Promise<void> => {
   return new Promise((resolve, reject) => {
     const transaction = db.transaction(STORE_NAME, 'readwrite');
     const store = transaction.objectStore(STORE_NAME);
-    const request = store.put(value, key);
+    const request = putValue(value, key, store);
     
     request.onsuccess = () => resolve();
     request.onerror = () => reject(request.error);
   });
 };
+
+// Helper for 'put' to make TypeScript happier inside transaction
+const putValue = (value: any, key: string, store: IDBObjectStore) => {
+    return store.put(value, key);
+};
+
 
 export const StorageService = {
   getRecords: () => get<WorkExpenseRecord[]>(KEYS.RECORDS, []),
