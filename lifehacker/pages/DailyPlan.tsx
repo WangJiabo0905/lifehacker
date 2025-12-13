@@ -75,8 +75,8 @@ export const DailyPlanPage: React.FC = () => {
   const scanTasks = async () => {
       setIsScanning(true);
       try {
-          // Now using global stats, no date range needed
-          const stats = await StorageService.getAllTaskStats();
+          // Changed to scan only future tasks (starting from today)
+          const stats = await StorageService.getFutureTaskStats(today);
           setFoundTasks(stats);
       } finally {
           setIsScanning(false);
@@ -115,7 +115,6 @@ export const DailyPlanPage: React.FC = () => {
       e.stopPropagation();
       e.preventDefault();
       
-      // Removed native confirm() dialog as it can feel unresponsive or be blocked
       const updated = {
           ...plan,
           tasks: plan.tasks.filter(t => t.id !== id)
@@ -187,10 +186,10 @@ export const DailyPlanPage: React.FC = () => {
   const handleBatchDelete = async () => {
       if (selectedDeleteTasks.size === 0) return;
       
-      // Removed confirm() since user is already in a specific delete modal clicking a red button
       setIsDeletingBatch(true);
       try {
-          await StorageService.deleteTasksGlobal(Array.from(selectedDeleteTasks));
+          // Only delete today + future
+          await StorageService.deleteTasksFromDate(Array.from(selectedDeleteTasks), today);
 
           // Refresh UI
           const reloaded = await StorageService.getPlan(currentDate);
@@ -199,8 +198,6 @@ export const DailyPlanPage: React.FC = () => {
           const allPlans = await StorageService.getAllPlans();
           setHistory(Object.values(allPlans).sort((a,b) => a.date.localeCompare(b.date)));
 
-          // Optional: simple feedback or just close modal
-          // alert("删除成功！"); 
           setIsDeleteModalOpen(false);
           setSelectedDeleteTasks(new Set());
       } catch (e) {
@@ -339,7 +336,8 @@ export const DailyPlanPage: React.FC = () => {
             <div className="bg-orange-50 p-4 rounded-xl mb-4 flex gap-3 border border-orange-100">
                 <AlertTriangle className="text-orange-500 flex-shrink-0" size={20}/>
                 <p className="text-xs text-orange-800 leading-relaxed">
-                   系统已自动扫描整个项目周期内的所有任务。选中项目后，该任务的<strong>所有历史记录</strong>将被永久删除。
+                   系统已扫描从<strong>【今天】</strong>开始的所有未来计划。
+                   <br/>删除后，过去的打卡记录将被保留，未来的计划将被清除。
                 </p>
             </div>
             
@@ -348,7 +346,7 @@ export const DailyPlanPage: React.FC = () => {
                 <div className="flex justify-between items-center mb-2 px-1">
                     <span className="text-xs font-bold text-gray-400 uppercase flex items-center gap-1">
                         <Layers size={12}/>
-                        全部任务 ({foundTasks.length})
+                        待执行的任务 ({foundTasks.length})
                     </span>
                     {selectedDeleteTasks.size > 0 && <span className="text-xs text-red-500 font-bold">已选 {selectedDeleteTasks.size} 类</span>}
                 </div>
@@ -356,11 +354,11 @@ export const DailyPlanPage: React.FC = () => {
                 {isScanning ? (
                     <div className="flex items-center justify-center py-10 text-gray-400 gap-2">
                         <Loader className="animate-spin" size={20}/>
-                        <span>正在全库扫描...</span>
+                        <span>正在扫描未来计划...</span>
                     </div>
                 ) : foundTasks.length === 0 ? (
                     <div className="text-center py-10 text-gray-400 text-sm bg-gray-50 rounded-xl border border-dashed border-gray-200">
-                        暂无任何任务记录。
+                        今天及未来暂无任何计划。
                     </div>
                 ) : (
                     <div className="space-y-2">
@@ -379,7 +377,7 @@ export const DailyPlanPage: React.FC = () => {
                                         <span className={`truncate font-medium transition-colors ${isSelected ? 'text-red-900' : 'text-gray-700'}`}>{item.text}</span>
                                     </div>
                                     <span className={`text-[10px] px-2 py-1 rounded-full whitespace-nowrap font-medium ${isSelected ? 'bg-red-100 text-red-600' : 'bg-gray-100 text-gray-500'}`}>
-                                        {item.count} 次记录
+                                        剩余 {item.count} 次
                                     </span>
                                 </div>
                             );
@@ -394,7 +392,7 @@ export const DailyPlanPage: React.FC = () => {
                 className="w-full bg-red-500 text-white py-4 rounded-xl font-bold flex items-center justify-center gap-2 hover:bg-red-600 transition-all disabled:opacity-50 disabled:cursor-not-allowed shadow-lg hover:shadow-xl hover:-translate-y-0.5"
             >
                 {isDeletingBatch ? <Repeat className="animate-spin" size={18}/> : <Trash2 size={18} />}
-                {isDeletingBatch ? "清理中..." : `删除选中任务的所有记录`}
+                {isDeletingBatch ? "清理中..." : `删除选中计划 (保留历史)`}
             </button>
           </div>
         </div>
@@ -549,3 +547,4 @@ export const DailyPlanPage: React.FC = () => {
     </div>
   );
 };
+
