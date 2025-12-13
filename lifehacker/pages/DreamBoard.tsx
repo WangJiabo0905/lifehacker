@@ -115,4 +115,3 @@ export const DreamBoard: React.FC<DreamBoardProps> = ({ onEnterApp, isGatekeeper
     </div>
   );
 };
-

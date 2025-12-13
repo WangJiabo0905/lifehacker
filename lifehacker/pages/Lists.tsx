@@ -2,7 +2,7 @@
 import React, { useEffect, useState } from 'react';
 import { ListItem } from '../types';
 import { StorageService } from '../services/storageService';
-import { Trash2, Plus, Calendar, Sparkles, ChevronDown, ChevronUp, Download, Book, PenTool, Quote } from 'lucide-react';
+import { Trash2, Plus, Calendar, Sparkles, ChevronDown, ChevronUp, Download, Book, PenTool, Quote, Zap, Shield, ShieldAlert, Fingerprint, AlertTriangle, Skull, RefreshCw, X } from 'lucide-react';
 
 interface ListsProps {
   type: 'NOT_TO_DO' | 'SUCCESS' | 'IDEAS' | 'INSPIRATION';
@@ -11,7 +11,7 @@ interface ListsProps {
 const CONFIG = {
   NOT_TO_DO: {
     title: "不为清单",
-    desc: "决定不做什么，往往比决定做什么更重要。",
+    desc: "选择不做什么，比做什么更重要",
     placeholder: "我绝不再...",
     color: "text-white",
     keyName: "NOT_TO_DO",
@@ -55,6 +55,11 @@ export const ListsPage: React.FC<ListsProps> = ({ type }) => {
   const [articleContent, setArticleContent] = useState(''); 
 
   const [expandedItems, setExpandedItems] = useState<Record<string, boolean>>({});
+  
+  // Redemption Modal State
+  const [redemptionTarget, setRedemptionTarget] = useState<ListItem | null>(null);
+  const [redemptionInput, setRedemptionInput] = useState('');
+
   const config = CONFIG[type];
 
   // Load data asynchronously
@@ -82,6 +87,7 @@ export const ListsPage: React.FC<ListsProps> = ({ type }) => {
       category: categoryToSave,
       author: (type === 'INSPIRATION' && (activeTab === 'book' || activeTab === 'article')) ? author : undefined,
       content: (type === 'INSPIRATION' && activeTab === 'article') ? articleContent : undefined,
+      breaks: [], // Initialize empty breaks
     };
 
     try {
@@ -108,6 +114,48 @@ export const ListsPage: React.FC<ListsProps> = ({ type }) => {
     setExpandedItems(prev => ({...prev, [id]: !prev[id]}));
   };
 
+  const handleUpdateItem = async (updatedItem: ListItem) => {
+      setItems(prev => prev.map(i => i.id === updatedItem.id ? updatedItem : i));
+      await StorageService.saveListItem(type, updatedItem);
+  };
+
+  const recordBreak = async (id: string, e: React.MouseEvent) => {
+      e.stopPropagation();
+      const item = items.find(i => i.id === id);
+      if (!item) return;
+
+      const currentBreaks = item.breaks || [];
+      
+      // If already heavily corrupted (6+), open Redemption Menu instead of auto-adding
+      if (currentBreaks.length >= 6) {
+          setRedemptionTarget(item);
+          setRedemptionInput('');
+          return;
+      }
+      
+      // Normal Logic: Add Break
+      const updatedItem = { ...item, breaks: [...currentBreaks, new Date().toISOString()] };
+      await handleUpdateItem(updatedItem);
+  };
+
+  // Logic for the Redemption Modal
+  const handleRedeem = async () => {
+      if (!redemptionTarget) return;
+      if (redemptionInput !== '我找回了我的原则') return;
+
+      const updatedItem = { ...redemptionTarget, breaks: [] }; // Reset to pure
+      await handleUpdateItem(updatedItem);
+      setRedemptionTarget(null);
+  };
+
+  const handleCorruptMore = async () => {
+      if (!redemptionTarget) return;
+      const currentBreaks = redemptionTarget.breaks || [];
+      const updatedItem = { ...redemptionTarget, breaks: [...currentBreaks, new Date().toISOString()] };
+      await handleUpdateItem(updatedItem);
+      setRedemptionTarget(null);
+  };
+
   const exportInspiration = async () => {
     // Get inspiration data specifically
     const inspirationList = await StorageService.getList('INSPIRATION');
@@ -132,8 +180,139 @@ export const ListsPage: React.FC<ListsProps> = ({ type }) => {
     ? items.filter(i => i.category === activeTab)
     : items;
 
+  // --- STYLE HELPERS ---
+  const getItemStyles = (count: number) => {
+      if (count === 0) {
+          return {
+              container: 'bg-white border-white/10 hover:shadow-lg',
+              text: 'text-gray-800',
+              icon: Shield,
+              iconColor: 'text-gray-300',
+              label: 'PURE',
+              labelClass: 'bg-gray-100 text-gray-400',
+              btnText: '破戒',
+              buttonClass: 'bg-gray-100 text-gray-400 hover:bg-gray-200 hover:text-gray-600'
+          };
+      }
+      if (count < 3) {
+          return {
+              container: 'bg-[#F5F5F7] border-gray-200 hover:shadow-lg',
+              text: 'text-gray-900',
+              icon: ShieldAlert,
+              iconColor: 'text-gray-400',
+              label: 'BROKEN',
+              labelClass: 'bg-gray-200 text-gray-600 font-bold',
+              btnText: '再次破戒',
+              buttonClass: 'bg-white border border-gray-200 text-gray-600 hover:bg-gray-100'
+          };
+      }
+      if (count < 6) {
+          return {
+              container: 'bg-[#E5E5EA] border-gray-300 shadow-inner',
+              text: 'text-gray-900 font-bold',
+              icon: AlertTriangle,
+              iconColor: 'text-gray-600',
+              label: 'WARNING',
+              labelClass: 'bg-gray-300 text-gray-800 font-bold',
+              btnText: '失控',
+              buttonClass: 'bg-white border border-gray-300 text-gray-800 hover:bg-gray-50'
+          };
+      }
+      // Level 3: The Void (6+) - Glitch Effect applied in render
+      return {
+          container: 'bg-[#0f0f0f] border-red-900/30 shadow-2xl scale-[1.01] animate-pulse-slow relative overflow-hidden',
+          text: 'text-red-50 font-bold tracking-widest font-mono opacity-90',
+          icon: Skull,
+          iconColor: 'text-red-500/50',
+          label: 'VOID',
+          labelClass: 'bg-red-900/50 text-red-200 font-black tracking-widest border border-red-500/20',
+          btnText: '继续沉沦',
+          buttonClass: 'bg-red-900/20 text-red-400 hover:bg-red-900/40 border border-red-900/30'
+      };
+  };
+
   return (
     <div className="max-w-3xl mx-auto space-y-8 animate-fade-in pb-12">
+      {/* Glitch Animation Keyframes */}
+      <style>{`
+        @keyframes glitch-anim {
+          0% { transform: translate(0); }
+          20% { transform: translate(-2px, 2px); }
+          40% { transform: translate(-2px, -2px); }
+          60% { transform: translate(2px, 2px); }
+          80% { transform: translate(2px, -2px); }
+          100% { transform: translate(0); }
+        }
+        .glitch-hover:hover {
+            animation: glitch-anim 0.3s infinite;
+        }
+        .animate-pulse-slow {
+            animation: pulse 4s cubic-bezier(0.4, 0, 0.6, 1) infinite;
+        }
+      `}</style>
+
+      {/* --- REDEMPTION MODAL --- */}
+      {redemptionTarget && (
+          <div className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-black/80 backdrop-blur-md animate-fade-in">
+              <div className="bg-[#121212] border border-red-900/30 rounded-3xl w-full max-w-md shadow-[0_0_50px_rgba(220,38,38,0.2)] p-6 relative overflow-hidden">
+                  <div className="absolute top-0 left-0 w-full h-1 bg-gradient-to-r from-transparent via-red-900 to-transparent"></div>
+                  
+                  <div className="text-center space-y-4 mb-6">
+                      <div className="w-16 h-16 bg-red-900/20 rounded-full flex items-center justify-center mx-auto mb-2 relative">
+                          <Skull className="text-red-500 absolute animate-pulse" size={32} />
+                          <Skull className="text-red-500 absolute opacity-50 translate-x-1" size={32} />
+                      </div>
+                      <h3 className="text-2xl font-black text-red-50 tracking-tight">原则已崩塌</h3>
+                      <p className="text-red-200/50 text-sm font-mono">
+                          "{redemptionTarget.text}" 已被打破 {redemptionTarget.breaks?.length} 次。
+                      </p>
+                      <p className="text-gray-400 text-sm leading-relaxed">
+                          此原则已堕入虚空。要重置计数，你必须进行<strong>重铸仪式</strong>，或者选择继续记录这份失败。
+                      </p>
+                  </div>
+
+                  <div className="space-y-4">
+                      <div className="relative">
+                          <input 
+                              type="text" 
+                              value={redemptionInput}
+                              onChange={(e) => setRedemptionInput(e.target.value)}
+                              placeholder="输入：我找回了我的原则"
+                              className="w-full bg-black border border-white/10 rounded-xl p-4 text-center text-white outline-none focus:border-red-500/50 transition-colors placeholder:text-gray-700"
+                          />
+                      </div>
+
+                      <div className="flex gap-3">
+                          <button 
+                            onClick={handleCorruptMore}
+                            className="flex-1 py-4 bg-red-950/30 text-red-400 rounded-xl font-bold hover:bg-red-950/50 transition-colors border border-red-900/20 text-xs tracking-wider"
+                          >
+                              继续沉沦 (+1)
+                          </button>
+                          
+                          <button 
+                             onClick={handleRedeem}
+                             disabled={redemptionInput !== '我找回了我的原则'}
+                             className={`flex-1 py-4 rounded-xl font-bold transition-all flex items-center justify-center gap-2 text-xs tracking-wider border ${
+                                 redemptionInput === '我找回了我的原则' 
+                                 ? 'bg-white text-black border-white hover:scale-105 shadow-[0_0_20px_rgba(255,255,255,0.3)]' 
+                                 : 'bg-white/5 text-white/20 border-transparent cursor-not-allowed'
+                             }`}
+                          >
+                              <RefreshCw size={14} /> 重铸原则 (Reset)
+                          </button>
+                      </div>
+                      <button 
+                        onClick={() => setRedemptionTarget(null)}
+                        className="w-full py-2 text-white/20 text-xs hover:text-white/40"
+                      >
+                          取消
+                      </button>
+                  </div>
+              </div>
+          </div>
+      )}
+
       <header className="text-center space-y-4 py-8 relative">
         <h2 className={`text-4xl font-bold tracking-tight ${config.color} flex items-center justify-center gap-3`}>
             {type === 'INSPIRATION' && <Sparkles size={32}/>}
@@ -227,58 +406,114 @@ export const ListsPage: React.FC<ListsProps> = ({ type }) => {
       </form>
 
       <div className="space-y-4">
-        {displayedItems.map(item => (
-          <div 
-            key={item.id} 
-            className={`group bg-white rounded-2xl shadow-sm border border-white/10 overflow-hidden transition-all hover:shadow-lg ${item.category === 'article' ? 'cursor-pointer' : ''}`}
-            onClick={() => item.category === 'article' && toggleExpand(item.id)}
-          >
-            <div className="p-6 flex justify-between items-start">
-                <div className="space-y-3 w-full">
-                    <div className="flex items-start gap-4">
-                        {item.category === 'sentence' && <Quote size={20} className="text-[#8E5E73]/40 mt-1 flex-shrink-0" />}
-                        {item.category === 'book' && <Book size={20} className="text-[#8E5E73]/40 mt-1 flex-shrink-0" />}
-                        {item.category === 'article' && <PenTool size={20} className="text-[#8E5E73]/40 mt-1 flex-shrink-0" />}
-                        
-                        <div className="flex-1">
-                                <p className={`text-lg text-gray-800 leading-relaxed font-medium ${item.category === 'sentence' ? 'italic font-serif text-gray-600' : ''}`}>
-                                    {item.text}
-                                </p>
-                                {item.author && (
-                                    <p className="text-sm text-gray-400 mt-2 font-medium">—— {item.author}</p>
-                                )}
+        {displayedItems.map(item => {
+          const breakCount = item.breaks?.length || 0;
+          
+          // Determine styles based on context
+          let styles = {
+              container: 'bg-white border-white/10 hover:shadow-lg',
+              text: 'text-gray-800',
+              icon: null as any,
+              iconColor: '',
+              label: '',
+              labelClass: '',
+              btnText: '',
+              buttonClass: ''
+          };
+          
+          if (type === 'NOT_TO_DO') {
+              styles = getItemStyles(breakCount);
+          } else {
+              // Standard styles for other lists
+              if (item.category === 'sentence') styles.icon = Quote;
+              if (item.category === 'book') styles.icon = Book;
+              if (item.category === 'article') styles.icon = PenTool;
+              styles.iconColor = 'text-[#8E5E73]/40';
+          }
+          
+          const StatusIcon = styles.icon;
+
+          return (
+            <div 
+              key={item.id} 
+              className={`group rounded-2xl shadow-sm border overflow-hidden transition-all duration-500 ${styles.container} ${item.category === 'article' ? 'cursor-pointer' : ''} ${breakCount >= 6 ? 'glitch-hover' : ''}`}
+              onClick={() => item.category === 'article' && toggleExpand(item.id)}
+            >
+              <div className="p-6 flex justify-between items-start relative z-10">
+                  <div className="space-y-3 w-full">
+                      <div className="flex items-start gap-4">
+                          
+                          {/* Left Icon: Changes based on severity or type */}
+                          {StatusIcon && <StatusIcon size={20} className={`${styles.iconColor} mt-1 flex-shrink-0 transition-colors`} />}
+                          
+                          <div className="flex-1">
+                                  <p className={`text-lg leading-relaxed transition-colors ${styles.text} ${item.category === 'sentence' ? 'italic font-serif text-gray-600' : ''}`}>
+                                      {item.text}
+                                  </p>
+                                  {item.author && (
+                                      <p className="text-sm text-gray-400 mt-2 font-medium">—— {item.author}</p>
+                                  )}
+                          </div>
+                          
+                          {item.category === 'article' && (
+                              <div className="text-gray-300">
+                                  {expandedItems[item.id] ? <ChevronUp size={20}/> : <ChevronDown size={20}/>}
+                              </div>
+                          )}
+                          
+                          {/* Break Button / Counter for Not-To-Do List */}
+                          {type === 'NOT_TO_DO' && (
+                              <div className="flex flex-col items-end gap-2">
+                                  {breakCount > 0 && (
+                                      <span className={`text-[10px] px-2 py-0.5 rounded uppercase tracking-wider ${styles.labelClass}`}>
+                                          {breakCount >= 6 ? 'VOID' : `${breakCount} Breaks`}
+                                      </span>
+                                  )}
+                                  
+                                  <button 
+                                    onClick={(e) => recordBreak(item.id, e)}
+                                    className={`flex items-center gap-1.5 px-4 py-2 rounded-lg text-xs font-bold transition-all border shadow-sm ${styles.buttonClass}`}
+                                    title={breakCount >= 6 ? "重铸原则或记录沉沦" : "记录破戒 (Record Break)"}
+                                  >
+                                      {breakCount >= 6 ? <Skull size={14}/> : <Zap size={14} className={breakCount > 0 ? "fill-current" : ""}/>}
+                                      <span>{styles.btnText || '破戒'}</span>
+                                  </button>
+                              </div>
+                          )}
+                      </div>
+                      
+                      <div className="flex items-center justify-between pl-9 pr-1">
+                        <div className={`flex items-center gap-2 text-xs opacity-50 font-medium ${breakCount >= 6 ? 'text-red-500/50' : 'text-gray-400'}`}>
+                             <Calendar size={12} />
+                             <span>{new Date(item.createdAt).toLocaleDateString()}</span>
                         </div>
-                        
-                        {item.category === 'article' && (
-                            <div className="text-gray-300">
-                                {expandedItems[item.id] ? <ChevronUp size={20}/> : <ChevronDown size={20}/>}
-                            </div>
-                        )}
-                    </div>
-                    
-                    <div className="flex items-center gap-2 text-xs text-gray-300 font-medium pl-9">
-                        <Calendar size={12} />
-                        <span>{new Date(item.createdAt).toLocaleDateString()}</span>
-                    </div>
-                </div>
-                
-                <button 
-                onClick={(e) => remove(item.id, e)}
-                className="opacity-0 group-hover:opacity-100 text-gray-300 hover:text-red-500 transition-all p-2 flex-shrink-0 ml-2"
-                >
-                <Trash2 size={18} />
-                </button>
+
+                        <button 
+                            onClick={(e) => remove(item.id, e)}
+                            className={`transition-all p-1 opacity-0 group-hover:opacity-100 ${breakCount >= 6 ? 'text-red-500 hover:text-red-400' : 'text-gray-300 hover:text-red-500'}`}
+                            title="删除"
+                        >
+                            <Trash2 size={16} />
+                        </button>
+                      </div>
+                  </div>
+              </div>
+              
+              {/* Optional Decoration for Void Level */}
+              {breakCount >= 6 && (
+                  <div className="absolute top-0 right-0 w-32 h-32 bg-red-600/10 blur-[50px] pointer-events-none"></div>
+              )}
+              
+              {item.category === 'article' && expandedItems[item.id] && item.content && (
+                  <div className="px-6 pb-6 pt-0 animate-fade-in cursor-text" onClick={e => e.stopPropagation()}>
+                      <div className="bg-gray-50 rounded-xl p-6 text-gray-700 text-sm leading-relaxed whitespace-pre-wrap font-serif border-l-4 border-[#8E5E73]/30 ml-9">
+                          {item.content}
+                      </div>
+                  </div>
+              )}
             </div>
-            
-            {item.category === 'article' && expandedItems[item.id] && item.content && (
-                <div className="px-6 pb-6 pt-0 animate-fade-in cursor-text" onClick={e => e.stopPropagation()}>
-                    <div className="bg-gray-50 rounded-xl p-6 text-gray-700 text-sm leading-relaxed whitespace-pre-wrap font-serif border-l-4 border-[#8E5E73]/30 ml-9">
-                        {item.content}
-                    </div>
-                </div>
-            )}
-          </div>
-        ))}
+          );
+        })}
         
         {displayedItems.length === 0 && (
           <div className="text-center text-white/40 py-12 flex flex-col items-center gap-4">

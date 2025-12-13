@@ -10,13 +10,15 @@ import {
   CreditCard,
   Settings,
   Database,
-  Sparkles
+  Sparkles,
+  HelpCircle
 } from 'lucide-react';
 import { PageView } from '../types';
 
 interface NavigationProps {
   current: PageView;
   onChange: (page: PageView) => void;
+  onTriggerTutorial: () => void;
   className?: string;
 }
 
@@ -44,7 +46,7 @@ const NavItem = ({
   </button>
 );
 
-export const Navigation: React.FC<NavigationProps> = ({ current, onChange, className = '' }) => {
+export const Navigation: React.FC<NavigationProps> = ({ current, onChange, onTriggerTutorial, className = '' }) => {
   return (
     <nav className={`flex flex-col p-6 bg-white/5 backdrop-blur-md border-r border-white/10 sticky top-0 overflow-y-auto ${className}`}>
       <div className="mb-8 pl-2">
@@ -69,8 +71,8 @@ export const Navigation: React.FC<NavigationProps> = ({ current, onChange, class
         <div className="text-xs font-semibold text-white/40 uppercase tracking-wider mb-2 mt-6 pl-4">设置 (Setup)</div>
         <NavItem icon={Settings} label="管理梦想" active={current === 'dreams_manage'} onClick={() => onChange('dreams_manage')} />
         <NavItem icon={Database} label="数据资产" active={current === 'data_backup'} onClick={() => onChange('data_backup')} />
+        <NavItem icon={HelpCircle} label="重看教程" active={false} onClick={onTriggerTutorial} />
       </div>
     </nav>
   );
 };
-

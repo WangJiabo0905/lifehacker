@@ -20,6 +20,7 @@ export interface ListItem {
   category?: 'sentence' | 'book' | 'article'; // Explicit types
   author?: string;   // Optional metadata for books/articles
   content?: string;  // Optional: For Article paragraphs/body
+  breaks?: string[]; // NEW: Array of timestamps when the user broke this "Not-To-Do" rule
 }
 
 export interface Dream {

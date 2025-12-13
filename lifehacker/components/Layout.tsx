@@ -8,10 +8,11 @@ interface LayoutProps {
   currentPage: PageView;
   onNavigate: (page: PageView) => void;
   isDreamMode: boolean;
+  onTriggerTutorial: () => void; // New prop
   children: React.ReactNode;
 }
 
-export const Layout: React.FC<LayoutProps> = ({ currentPage, onNavigate, isDreamMode, children }) => {
+export const Layout: React.FC<LayoutProps> = ({ currentPage, onNavigate, isDreamMode, onTriggerTutorial, children }) => {
   const [isMobileMenuOpen, setIsMobileMenuOpen] = useState(false);
 
   // If in "Dream Mode" (Gatekeeper), we render full screen without layout shell
@@ -25,6 +26,7 @@ export const Layout: React.FC<LayoutProps> = ({ currentPage, onNavigate, isDream
       <Navigation 
         current={currentPage} 
         onChange={onNavigate} 
+        onTriggerTutorial={onTriggerTutorial}
         className="w-64 h-full hidden md:flex" 
       />
 
@@ -55,6 +57,10 @@ export const Layout: React.FC<LayoutProps> = ({ currentPage, onNavigate, isDream
                             onNavigate(page);
                             setIsMobileMenuOpen(false);
                         }} 
+                        onTriggerTutorial={() => {
+                            onTriggerTutorial();
+                            setIsMobileMenuOpen(false);
+                        }}
                         className="w-full h-auto border-none bg-transparent static p-0"
                     />
                 </div>
@@ -68,4 +74,3 @@ export const Layout: React.FC<LayoutProps> = ({ currentPage, onNavigate, isDream
     </div>
   );
 };
-

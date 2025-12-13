@@ -3,7 +3,6 @@ import React, { useEffect, useState } from 'react';
 import { CheckCircle, Plus, ChevronLeft, ChevronRight, Calendar as CalendarIcon, X, Repeat, Check, CalendarDays, Trash2, AlertTriangle, Eraser, Loader, Layers } from 'lucide-react';
 import { DailyPlan } from '../types';
 import { StorageService } from '../services/storageService';
-import { BarChart, Bar, XAxis, Tooltip, ResponsiveContainer } from 'recharts';
 
 // Moved outside to prevent re-creation on every render
 // Fixed: Explicit type for setType (was any)
@@ -29,7 +28,6 @@ export const DailyPlanPage: React.FC = () => {
   const [currentDate, setCurrentDate] = useState(today);
   const [plan, setPlan] = useState<DailyPlan>({ date: today, tasks: [], review: '', harvest: '' });
   const [newTask, setNewTask] = useState('');
-  const [history, setHistory] = useState<DailyPlan[]>([]);
 
   // --- Batch Plan Modal State ---
   const [isBatchModalOpen, setIsBatchModalOpen] = useState(false);
@@ -54,9 +52,6 @@ export const DailyPlanPage: React.FC = () => {
         } else {
             setPlan({ date: currentDate, tasks: [], review: '', harvest: '' });
         }
-
-        const allPlans = await StorageService.getAllPlans();
-        setHistory(Object.values(allPlans).sort((a,b) => a.date.localeCompare(b.date)));
     };
     loadData();
   }, [currentDate]);
@@ -87,9 +82,6 @@ export const DailyPlanPage: React.FC = () => {
   const save = async (updated: DailyPlan) => {
     setPlan(updated);
     await StorageService.savePlan(updated);
-    // Refresh history chart immediately
-    const allPlans = await StorageService.getAllPlans();
-    setHistory(Object.values(allPlans).sort((a,b) => a.date.localeCompare(b.date)));
   };
 
   const addTask = async (e: React.FormEvent) => {
@@ -159,9 +151,6 @@ export const DailyPlanPage: React.FC = () => {
           const reloaded = await StorageService.getPlan(currentDate);
           if (reloaded) setPlan(reloaded);
           
-          const allPlans = await StorageService.getAllPlans();
-          setHistory(Object.values(allPlans).sort((a,b) => a.date.localeCompare(b.date)));
-
           setIsBatchModalOpen(false);
           setBatchTask('');
           setBatchType('SINGLE');
@@ -196,9 +185,6 @@ export const DailyPlanPage: React.FC = () => {
           const reloaded = await StorageService.getPlan(currentDate);
           if (reloaded) setPlan(reloaded);
           
-          const allPlans = await StorageService.getAllPlans();
-          setHistory(Object.values(allPlans).sort((a,b) => a.date.localeCompare(b.date)));
-
           setIsDeleteModalOpen(false);
           setSelectedDeleteTasks(new Set());
       } catch (e) {
@@ -208,13 +194,6 @@ export const DailyPlanPage: React.FC = () => {
           setIsDeletingBatch(false);
       }
   };
-
-  // Chart Data: Last 7 days relative to TODAY
-  const chartData = history.slice(-7).map(p => ({
-    date: p.date.slice(5),
-    completed: p.tasks.filter(t => t.completed).length,
-    total: p.tasks.length
-  }));
 
   const changeDay = (offset: number) => {
       const d = new Date(currentDate + 'T00:00:00'); 
@@ -448,9 +427,18 @@ export const DailyPlanPage: React.FC = () => {
 
       <div className="grid grid-cols-1 lg:grid-cols-3 gap-8">
         {/* Left Column: Tasks */}
-        <div className="lg:col-span-2 space-y-6">
-          <div className="bg-white rounded-3xl shadow-lg border border-white/20 p-6 min-h-[400px]">
-            <form onSubmit={addTask} className="flex gap-4 mb-8">
+        <div className="lg:col-span-2 bg-white rounded-3xl shadow-lg border border-white/20 p-6 flex flex-col h-full min-h-[500px]">
+            <div className="flex items-center justify-between mb-6">
+                <div className="flex items-center gap-2">
+                    <div className="w-1 h-6 bg-[#8E5E73] rounded-full"></div>
+                    <h3 className="text-xl font-bold text-gray-800">今日待办</h3>
+                </div>
+                 <div className="text-sm font-medium text-gray-400 bg-gray-50 px-3 py-1 rounded-full">
+                    {plan.tasks.filter(t => t.completed).length} / {plan.tasks.length} 完成
+                </div>
+            </div>
+
+            <form onSubmit={addTask} className="flex gap-4 mb-6">
               <input
                 type="text"
                 value={newTask}
@@ -458,98 +446,83 @@ export const DailyPlanPage: React.FC = () => {
                 placeholder="今天最重要的事是..."
                 className="flex-1 bg-[#F5F5F7] border-none rounded-2xl px-5 py-4 text-gray-900 focus:ring-2 focus:ring-[#8E5E73]/20 outline-none transition-all placeholder:text-gray-400"
               />
-              <button type="submit" className="bg-[#8E5E73] text-white p-4 rounded-2xl hover:bg-[#7a4f61] transition-colors shadow-md">
+              <button type="submit" className="bg-[#8E5E73] text-white p-4 rounded-2xl hover:bg-[#7a4f61] transition-colors shadow-md flex-shrink-0">
                 <Plus size={24} />
               </button>
             </form>
 
-            <div className="space-y-3">
-              {plan.tasks.map(task => (
-                <div key={task.id} className="group flex items-center gap-4 p-4 hover:bg-gray-50 rounded-2xl transition-all border border-transparent hover:border-gray-100">
-                  {/* Checkbox Area - Clickable */}
-                  <div 
-                    onClick={() => toggleTask(task.id)}
-                    className={`w-6 h-6 rounded-full border-2 flex items-center justify-center transition-all duration-300 cursor-pointer ${task.completed ? 'bg-[#8E5E73] border-[#8E5E73] scale-110' : 'border-gray-300 group-hover:border-[#8E5E73]/50'}`}
-                  >
-                    {task.completed && <CheckCircle size={14} className="text-white" />}
-                  </div>
-                  
-                  {/* Text Area - Clickable */}
-                  <span 
-                    onClick={() => toggleTask(task.id)}
-                    className={`text-lg transition-all flex-1 cursor-pointer ${task.completed ? 'text-gray-400 line-through decoration-gray-300' : 'text-gray-800'}`}
-                  >
-                    {task.text}
-                  </span>
-                  
-                  {/* Single Delete Button - Independent & Visible & Protected Event */}
-                  <button 
-                    type="button"
-                    onClick={(e) => removeTask(e, task.id)}
-                    className="p-2 text-gray-300 hover:text-red-500 hover:bg-red-50 rounded-full transition-all relative z-10 cursor-pointer"
-                    title="删除"
-                  >
-                      <Trash2 size={18} />
-                  </button>
+            <div className="flex-1 overflow-y-auto custom-scrollbar pr-1">
+                <div className="space-y-3">
+                  {plan.tasks.map(task => (
+                    <div key={task.id} className="group flex items-center gap-4 p-4 hover:bg-gray-50 rounded-2xl transition-all border border-transparent hover:border-gray-100">
+                      {/* Checkbox Area - Clickable */}
+                      <div 
+                        onClick={() => toggleTask(task.id)}
+                        className={`w-6 h-6 rounded-full border-2 flex items-center justify-center transition-all duration-300 cursor-pointer flex-shrink-0 ${task.completed ? 'bg-[#8E5E73] border-[#8E5E73] scale-110' : 'border-gray-300 group-hover:border-[#8E5E73]/50'}`}
+                      >
+                        {task.completed && <CheckCircle size={14} className="text-white" />}
+                      </div>
+                      
+                      {/* Text Area - Clickable */}
+                      <span 
+                        onClick={() => toggleTask(task.id)}
+                        className={`text-lg transition-all flex-1 cursor-pointer break-all ${task.completed ? 'text-gray-400 line-through decoration-gray-300' : 'text-gray-800'}`}
+                      >
+                        {task.text}
+                      </span>
+                      
+                      {/* Single Delete Button */}
+                      <button 
+                        type="button"
+                        onClick={(e) => removeTask(e, task.id)}
+                        className="p-2 text-gray-300 hover:text-red-500 hover:bg-red-50 rounded-full transition-all relative z-10 cursor-pointer opacity-0 group-hover:opacity-100"
+                        title="删除"
+                      >
+                          <Trash2 size={18} />
+                      </button>
+                    </div>
+                  ))}
                 </div>
-              ))}
-              {plan.tasks.length === 0 && (
-                <div className="text-center text-gray-400 py-16 flex flex-col items-center">
-                    <Repeat className="mb-4 opacity-20" size={40}/>
-                    <span>空空如也。请开始规划你的一天。</span>
-                </div>
-              )}
-            </div>
-          </div>
 
-          {/* Weekly Chart */}
-          <div className="bg-white rounded-3xl shadow-lg border border-white/20 p-6">
-            <h4 className="text-sm font-semibold text-gray-400 uppercase tracking-wider mb-4 pl-2">执行力概览</h4>
-            <div className="h-48 w-full">
-              <ResponsiveContainer width="100%" height="100%">
-                <BarChart data={chartData}>
-                  <XAxis dataKey="date" tick={{fontSize: 12, fill: '#9CA3AF'}} axisLine={false} tickLine={false} />
-                  <Tooltip cursor={{fill: 'transparent'}} contentStyle={{borderRadius: '12px', border: 'none', boxShadow: '0 4px 12px rgba(0,0,0,0.1)'}} />
-                  <Bar dataKey="completed" fill="#8E5E73" radius={[4, 4, 0, 0]} barSize={20} name="已完成" />
-                </BarChart>
-              </ResponsiveContainer>
+                {plan.tasks.length === 0 && (
+                    <div className="h-full flex flex-col items-center justify-center text-gray-400 opacity-60 min-h-[200px]">
+                        <Repeat className="mb-4 opacity-30" size={48}/>
+                        <span>空空如也。请开始规划你的一天。</span>
+                    </div>
+                )}
             </div>
-          </div>
         </div>
 
         {/* Right Column: Review */}
-        <div className="space-y-6">
-          <div className="bg-white rounded-3xl shadow-lg border border-white/20 p-6 flex flex-col h-full">
+        <div className="bg-white rounded-3xl shadow-lg border border-white/20 p-6 flex flex-col h-full min-h-[500px]">
             <div className="flex items-center gap-2 mb-6">
                 <div className="w-1 h-6 bg-[#8E5E73] rounded-full"></div>
                 <h3 className="text-xl font-bold text-gray-800">晚间复盘</h3>
             </div>
             
-            <div className="space-y-6 flex-1">
-              <div className="bg-[#F5F5F7] rounded-2xl p-4 transition-all focus-within:ring-2 focus-within:ring-[#8E5E73]/10">
-                <label className="block text-xs font-bold text-gray-400 uppercase mb-2 tracking-wide">今日收获</label>
+            <div className="flex-1 flex flex-col gap-6">
+              <div className="bg-[#F5F5F7] rounded-2xl p-4 transition-all focus-within:ring-2 focus-within:ring-[#8E5E73]/10 flex-1 flex flex-col group">
+                <label className="block text-xs font-bold text-gray-400 uppercase mb-2 tracking-wide group-focus-within:text-[#8E5E73] transition-colors">今日收获</label>
                 <textarea 
-                  className="w-full bg-transparent border-none outline-none resize-none h-32 text-sm text-gray-800 leading-relaxed placeholder:text-gray-300"
+                  className="w-full bg-transparent border-none outline-none resize-none flex-1 text-sm text-gray-800 leading-relaxed placeholder:text-gray-300"
                   placeholder="今天学到了什么？创造了什么价值？"
                   value={plan.harvest}
                   onChange={(e) => save({...plan, harvest: e.target.value})}
                 />
               </div>
               
-              <div className="bg-[#F5F5F7] rounded-2xl p-4 transition-all focus-within:ring-2 focus-within:ring-[#8E5E73]/10">
-                <label className="block text-xs font-bold text-gray-400 uppercase mb-2 tracking-wide">自我反思</label>
+              <div className="bg-[#F5F5F7] rounded-2xl p-4 transition-all focus-within:ring-2 focus-within:ring-[#8E5E73]/10 flex-1 flex flex-col group">
+                <label className="block text-xs font-bold text-gray-400 uppercase mb-2 tracking-wide group-focus-within:text-[#8E5E73] transition-colors">自我反思</label>
                 <textarea 
-                  className="w-full bg-transparent border-none outline-none resize-none h-32 text-sm text-gray-800 leading-relaxed placeholder:text-gray-300"
+                  className="w-full bg-transparent border-none outline-none resize-none flex-1 text-sm text-gray-800 leading-relaxed placeholder:text-gray-300"
                   placeholder="哪些做得好？哪些需要改进？"
                   value={plan.review}
                   onChange={(e) => save({...plan, review: e.target.value})}
                 />
               </div>
             </div>
-          </div>
         </div>
       </div>
     </div>
   );
 };
-

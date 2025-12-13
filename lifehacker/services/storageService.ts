@@ -143,7 +143,15 @@ export const StorageService = {
     if (key === 'SUCCESS') storageKey = KEYS.SUCCESS;
     if (key === 'IDEAS') storageKey = KEYS.IDEAS;
     if (key === 'INSPIRATION') storageKey = KEYS.INSPIRATION;
-    await set(storageKey, [...data, item]);
+
+    // Check if item exists to update it, otherwise prepend (for better UX)
+    const index = data.findIndex(i => i.id === item.id);
+    if (index >= 0) {
+        data[index] = item;
+        await set(storageKey, data);
+    } else {
+        await set(storageKey, [item, ...data]);
+    }
   },
   deleteListItem: async (key: 'NOT_TO_DO' | 'SUCCESS' | 'IDEAS' | 'INSPIRATION', id: string) => {
     const data = await StorageService.getList(key);
@@ -310,4 +318,3 @@ export const StorageService = {
      }
   }
 };
-
