@@ -1,6 +1,6 @@
 
 import React, { useEffect, useState } from 'react';
-import { Play, ArrowRight, Plus } from 'lucide-react';
+import { Play, ArrowRight } from 'lucide-react';
 import { Dream } from '../types';
 import { StorageService } from '../services/storageService';
 
@@ -28,8 +28,12 @@ export const DreamBoard: React.FC<DreamBoardProps> = ({ onEnterApp, isGatekeeper
         </p>
       </div>
 
-      {/* Horizontal Scroll Container */}
-      <div className="flex-1 flex items-center overflow-x-auto snap-x snap-mandatory scroll-smooth px-8 md:px-16 gap-6 md:gap-12 pb-12 pt-4 w-full hide-scrollbar">
+      {/* Horizontal Scroll Container 
+          - flex-row: Standard Left-to-Right layout
+          - flex-nowrap: Forces items to stay in one line
+          - justify-start: Starts from the left
+      */}
+      <div className="flex-1 flex flex-row flex-nowrap items-center justify-start overflow-x-auto snap-x snap-mandatory scroll-smooth px-8 md:px-16 gap-6 md:gap-12 pb-12 pt-4 w-full hide-scrollbar">
         
         {/* Dream Cards */}
         {dreams.map((dream, index) => (
@@ -57,12 +61,12 @@ export const DreamBoard: React.FC<DreamBoardProps> = ({ onEnterApp, isGatekeeper
            </div>
         )}
 
-        {/* The "Start Journey" Card - Only at the end */}
+        {/* The "Start Journey" Card - Only at the FAR RIGHT END */}
         {isGatekeeper && (
-           <div className="snap-center shrink-0 w-[85vw] md:w-[400px] h-[60vh] md:h-[70vh] flex items-center justify-center">
+           <div className="snap-center shrink-0 w-[85vw] md:w-[400px] h-[60vh] md:h-[70vh] flex items-center justify-center pl-4">
               <button 
                 onClick={onEnterApp}
-                className="group relative w-full h-full max-h-[400px] bg-[#8E5E73] rounded-[2.5rem] flex flex-col items-center justify-center p-8 shadow-[0_0_50px_rgba(142,94,115,0.3)] hover:shadow-[0_0_80px_rgba(142,94,115,0.5)] transition-all overflow-hidden"
+                className="group relative w-full h-full max-h-[400px] bg-[#8E5E73] rounded-[2.5rem] flex flex-col items-center justify-center p-8 shadow-[0_0_50px_rgba(142,94,115,0.3)] hover:shadow-[0_0_80px_rgba(142,94,115,0.5)] transition-all overflow-hidden border border-white/10"
               >
                  <div className="absolute inset-0 bg-gradient-to-br from-white/10 to-transparent opacity-0 group-hover:opacity-100 transition-opacity"></div>
                  
@@ -70,8 +74,10 @@ export const DreamBoard: React.FC<DreamBoardProps> = ({ onEnterApp, isGatekeeper
                     <Play size={32} className="text-[#8E5E73] ml-1" fill="currentColor" />
                  </div>
                  
-                 <h3 className="text-3xl font-bold text-white mb-2">开启今日的逐梦之旅</h3>
-                 <p className="text-white/80 text-center font-light">最重要的是别忘了答应自己的事情</p>
+                 <h3 className="text-3xl font-bold text-white mb-2">开启今日</h3>
+                 <p className="text-white/80 text-center font-light text-sm px-4">
+                     唯有行动，<br/>才能连接梦境与现实。
+                 </p>
                  
                  <div className="absolute bottom-8 flex items-center gap-2 text-white/50 text-sm font-medium tracking-widest uppercase opacity-0 group-hover:opacity-100 transition-all translate-y-4 group-hover:translate-y-0 duration-500 delay-100">
                     Enter Workspace <ArrowRight size={14} />
@@ -80,14 +86,17 @@ export const DreamBoard: React.FC<DreamBoardProps> = ({ onEnterApp, isGatekeeper
            </div>
         )}
         
-        {/* Padding for end of scroll */}
+        {/* Padding for end of scroll to ensure button isn't cut off */}
         <div className="w-8 shrink-0"></div>
       </div>
       
-      {/* Scroll Hint */}
+      {/* Scroll Hint Animation */}
       {isGatekeeper && dreams.length > 0 && (
-         <div className="absolute bottom-6 left-1/2 -translate-x-1/2 text-white/30 text-sm font-light animate-pulse hidden md:block">
-            滑动查看更多 →
+         <div className="absolute bottom-8 left-1/2 -translate-x-1/2 text-white/40 text-sm font-light animate-pulse flex flex-col items-center gap-2 pointer-events-none">
+            <span className="tracking-widest uppercase text-xs">Review Your Vision</span>
+            <div className="flex items-center gap-1">
+                 滑动查看 <ArrowRight size={14} />
+            </div>
          </div>
       )}
     </div>
