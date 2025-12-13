@@ -75,7 +75,7 @@ export const DailyPlanPage: React.FC = () => {
   const scanTasks = async () => {
       setIsScanning(true);
       try {
-          // Changed to scan only future tasks (starting from today)
+          // Scan FUTURE tasks (including today)
           const stats = await StorageService.getFutureTaskStats(today);
           setFoundTasks(stats);
       } finally {
@@ -188,7 +188,7 @@ export const DailyPlanPage: React.FC = () => {
       
       setIsDeletingBatch(true);
       try {
-          // Only delete today + future
+          // Delete only Future (Today+)
           await StorageService.deleteTasksFromDate(Array.from(selectedDeleteTasks), today);
 
           // Refresh UI
@@ -335,10 +335,14 @@ export const DailyPlanPage: React.FC = () => {
 
             <div className="bg-orange-50 p-4 rounded-xl mb-4 flex gap-3 border border-orange-100">
                 <AlertTriangle className="text-orange-500 flex-shrink-0" size={20}/>
-                <p className="text-xs text-orange-800 leading-relaxed">
-                   系统已扫描从<strong>【今天】</strong>开始的所有未来计划。
-                   <br/>删除后，过去的打卡记录将被保留，未来的计划将被清除。
-                </p>
+                <div className="space-y-1">
+                   <p className="text-xs text-orange-800 font-bold">
+                       仅影响【今天及未来】的计划
+                   </p>
+                   <p className="text-xs text-orange-700 leading-relaxed">
+                       系统已扫描未来的任务。删除后，<strong className="underline">过去的打卡记录将被完整保留</strong>，只有今天和未来的计划会被清除。
+                   </p>
+                </div>
             </div>
             
             {/* Task List */}
@@ -392,7 +396,7 @@ export const DailyPlanPage: React.FC = () => {
                 className="w-full bg-red-500 text-white py-4 rounded-xl font-bold flex items-center justify-center gap-2 hover:bg-red-600 transition-all disabled:opacity-50 disabled:cursor-not-allowed shadow-lg hover:shadow-xl hover:-translate-y-0.5"
             >
                 {isDeletingBatch ? <Repeat className="animate-spin" size={18}/> : <Trash2 size={18} />}
-                {isDeletingBatch ? "清理中..." : `删除选中计划 (保留历史)`}
+                {isDeletingBatch ? "清理 (保留历史)" : `删除选中计划 (保留历史)`}
             </button>
           </div>
         </div>
