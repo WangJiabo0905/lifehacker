@@ -198,18 +198,21 @@ export const StorageService = {
     await set(KEYS.PLANS, allPlans);
   },
   
-  // NEW: Get statistics of ALL tasks in the DB
-  getAllTaskStats: async () => {
+  // NEW: Get statistics of tasks starting from a specific date (TODAY onwards)
+  getFutureTaskStats: async (fromDate: string) => {
       const allPlans = await get<Record<string, DailyPlan>>(KEYS.PLANS, {});
       const stats: Record<string, number> = {};
       
       Object.values(allPlans).forEach(plan => {
-          plan.tasks.forEach(t => {
-              const txt = t.text.trim();
-              if (txt) {
-                stats[txt] = (stats[txt] || 0) + 1;
-              }
-          });
+          // Compare ISO date strings: "2023-10-10" >= "2023-10-10" works alphabetically
+          if (plan.date >= fromDate) {
+              plan.tasks.forEach(t => {
+                  const txt = t.text.trim();
+                  if (txt) {
+                    stats[txt] = (stats[txt] || 0) + 1;
+                  }
+              });
+          }
       });
       // Return array sorted by count desc
       return Object.entries(stats)
@@ -217,25 +220,28 @@ export const StorageService = {
           .sort((a, b) => b.count - a.count);
   },
 
-  // NEW: Bulk Delete globally (all dates)
-  deleteTasksGlobal: async (taskTexts: string[]) => {
+  // NEW: Bulk Delete Future Plans (Today + Future)
+  deleteTasksFromDate: async (taskTexts: string[], fromDate: string) => {
       const allPlans = await get<Record<string, DailyPlan>>(KEYS.PLANS, {});
       let hasChanges = false;
       const targetSet = new Set(taskTexts);
 
       Object.keys(allPlans).forEach(dateStr => {
-          const plan = allPlans[dateStr];
-          const originalLength = plan.tasks.length;
-          
-          // Filter out tasks that are in the targetSet
-          const newTasks = plan.tasks.filter(t => !targetSet.has(t.text.trim()));
+          // Only modify plans if date is today or in the future
+          if (dateStr >= fromDate) {
+            const plan = allPlans[dateStr];
+            const originalLength = plan.tasks.length;
+            
+            // Filter out tasks that are in the targetSet
+            const newTasks = plan.tasks.filter(t => !targetSet.has(t.text.trim()));
 
-          if (newTasks.length !== originalLength) {
-              allPlans[dateStr] = {
-                  ...plan,
-                  tasks: newTasks
-              };
-              hasChanges = true;
+            if (newTasks.length !== originalLength) {
+                allPlans[dateStr] = {
+                    ...plan,
+                    tasks: newTasks
+                };
+                hasChanges = true;
+            }
           }
       });
 
@@ -245,9 +251,12 @@ export const StorageService = {
       return hasChanges;
   },
 
-  // Keep legacy for safety
+  // Keep legacy for safety/compatibility if needed, but unused now
   getTaskStats: async (startDate: string, endDate: string) => {
-    return StorageService.getAllTaskStats(); // Redirect to global for now or keep logic if needed
+    return StorageService.getFutureTaskStats(startDate); 
+  },
+  getAllTaskStats: async () => {
+    return StorageService.getFutureTaskStats('1900-01-01');
   },
 
   getAllPlans: () => get<Record<string, DailyPlan>>(KEYS.PLANS, {}),
@@ -286,3 +295,4 @@ export const StorageService = {
      }
   }
 };
+
