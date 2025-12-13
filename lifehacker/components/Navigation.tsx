@@ -1,16 +1,14 @@
 
 import React from 'react';
 import { 
-  Target, 
   Ban, 
   Trophy, 
   Lightbulb, 
   Wallet, 
   CalendarCheck,
-  Clock,
+  Clock, 
   CreditCard,
   Settings,
-  Image,
   Database,
   Sparkles
 } from 'lucide-react';
@@ -19,6 +17,7 @@ import { PageView } from '../types';
 interface NavigationProps {
   current: PageView;
   onChange: (page: PageView) => void;
+  className?: string;
 }
 
 const NavItem = ({ 
@@ -45,9 +44,9 @@ const NavItem = ({
   </button>
 );
 
-export const Navigation: React.FC<NavigationProps> = ({ current, onChange }) => {
+export const Navigation: React.FC<NavigationProps> = ({ current, onChange, className = '' }) => {
   return (
-    <nav className="w-64 h-full flex flex-col p-6 bg-white/5 backdrop-blur-md border-r border-white/10 hidden md:flex sticky top-0 overflow-y-auto">
+    <nav className={`flex flex-col p-6 bg-white/5 backdrop-blur-md border-r border-white/10 sticky top-0 overflow-y-auto ${className}`}>
       <div className="mb-8 pl-2">
         <h1 className="text-2xl font-bold tracking-tight text-white">生活黑客</h1>
       </div>
@@ -74,3 +73,4 @@ export const Navigation: React.FC<NavigationProps> = ({ current, onChange }) => 
     </nav>
   );
 };
+
