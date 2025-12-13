@@ -157,7 +157,16 @@ export const StorageService = {
   getDreams: () => get<Dream[]>(KEYS.DREAMS, []),
   saveDream: async (dream: Dream) => {
     const data = await StorageService.getDreams();
-    await set(KEYS.DREAMS, [...data, dream]);
+    const index = data.findIndex(d => d.id === dream.id);
+    if (index >= 0) {
+        // Update existing
+        const updated = [...data];
+        updated[index] = dream;
+        await set(KEYS.DREAMS, updated);
+    } else {
+        // Append new
+        await set(KEYS.DREAMS, [...data, dream]);
+    }
   },
   deleteDream: async (id: string) => {
     const data = await StorageService.getDreams();
@@ -258,7 +267,7 @@ export const StorageService = {
   },
 
   // Keep legacy for safety/compatibility if needed, but unused now
-  getTaskStats: async (startDate: string, endDate: string) => {
+  getTaskStats: async (startDate: string, _endDate: string) => {
     return StorageService.getFutureTaskStats(startDate); 
   },
   getAllTaskStats: async () => {
