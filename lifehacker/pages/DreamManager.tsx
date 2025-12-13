@@ -1,12 +1,16 @@
 
 import React, { useEffect, useState } from 'react';
-import { Plus, Trash2 } from 'lucide-react';
+import { Plus, Trash2, Edit2, Check, X } from 'lucide-react';
 import { Dream } from '../types';
 import { StorageService } from '../services/storageService';
 
 export const DreamManagerPage: React.FC = () => {
   const [dreams, setDreams] = useState<Dream[]>([]);
   const [newTitle, setNewTitle] = useState('');
+  
+  // Editing State
+  const [editingId, setEditingId] = useState<string | null>(null);
+  const [editTitle, setEditTitle] = useState('');
 
   useEffect(() => {
     StorageService.getDreams().then(setDreams);
@@ -31,15 +35,37 @@ export const DreamManagerPage: React.FC = () => {
   };
 
   const handleDelete = async (id: string) => {
-      await StorageService.deleteDream(id);
-      setDreams(prev => prev.filter(d => d.id !== id));
+      if(confirm("确定要删除这个梦想画面吗？")) {
+        await StorageService.deleteDream(id);
+        setDreams(prev => prev.filter(d => d.id !== id));
+      }
+  };
+
+  const startEdit = (dream: Dream) => {
+      setEditingId(dream.id);
+      setEditTitle(dream.title);
+  };
+
+  const cancelEdit = () => {
+      setEditingId(null);
+      setEditTitle('');
+  };
+
+  const saveEdit = async (dream: Dream) => {
+      if (!editTitle.trim()) return;
+      const updatedDream = { ...dream, title: editTitle };
+      await StorageService.saveDream(updatedDream);
+      
+      setDreams(prev => prev.map(d => d.id === dream.id ? updatedDream : d));
+      setEditingId(null);
+      setEditTitle('');
   };
 
   return (
     <div className="space-y-8 animate-fade-in">
         <header>
             <h2 className="text-3xl font-bold text-white">管理梦想</h2>
-            <p className="text-white/70 mt-1">上传图片，具象化你的渴望。</p>
+            <p className="text-white/70 mt-1">上传图片，具象化你的渴望。您可以随时编辑文字描述。</p>
         </header>
 
         <div className="bg-white p-6 rounded-2xl shadow-lg border border-white/20 mb-8">
@@ -62,20 +88,50 @@ export const DreamManagerPage: React.FC = () => {
 
         <div className="grid grid-cols-1 md:grid-cols-3 lg:grid-cols-4 gap-6">
             {dreams.map(dream => (
-                <div key={dream.id} className="relative group rounded-xl overflow-hidden bg-white shadow-lg border border-white/20">
-                    <img src={dream.imageUrl} alt={dream.title} className="w-full aspect-square object-cover" />
-                    <div className="p-4">
-                        <h4 className="font-bold text-gray-900 truncate">{dream.title}</h4>
+                <div key={dream.id} className="relative group rounded-xl overflow-hidden bg-white shadow-lg border border-white/20 flex flex-col">
+                    <div className="relative aspect-square">
+                        <img src={dream.imageUrl} alt={dream.title} className="w-full h-full object-cover" />
+                        
+                        {/* Overlay Actions */}
+                        <div className="absolute top-2 right-2 flex gap-2 opacity-0 group-hover:opacity-100 transition-all">
+                            <button 
+                                onClick={() => startEdit(dream)}
+                                className="bg-white/90 text-gray-700 p-2 rounded-full hover:bg-white hover:text-[#8E5E73] shadow-sm"
+                                title="编辑描述"
+                            >
+                                <Edit2 size={16} />
+                            </button>
+                            <button 
+                                onClick={() => handleDelete(dream.id)}
+                                className="bg-white/90 text-gray-700 p-2 rounded-full hover:bg-white hover:text-red-500 shadow-sm"
+                                title="删除"
+                            >
+                                <Trash2 size={16} />
+                            </button>
+                        </div>
                     </div>
-                    <button 
-                        onClick={() => handleDelete(dream.id)}
-                        className="absolute top-2 right-2 bg-white/90 text-red-500 p-2 rounded-full opacity-0 group-hover:opacity-100 transition-all hover:bg-red-50"
-                    >
-                        <Trash2 size={16} />
-                    </button>
+
+                    <div className="p-4 bg-white flex-1 flex items-center">
+                        {editingId === dream.id ? (
+                            <div className="flex items-center gap-2 w-full animate-fade-in">
+                                <input 
+                                    className="flex-1 bg-[#F5F5F7] px-2 py-1 rounded text-sm outline-none border border-transparent focus:border-[#8E5E73]"
+                                    value={editTitle}
+                                    onChange={(e) => setEditTitle(e.target.value)}
+                                    autoFocus
+                                    onKeyDown={(e) => e.key === 'Enter' && saveEdit(dream)}
+                                />
+                                <button onClick={() => saveEdit(dream)} className="text-green-600 p-1 hover:bg-green-50 rounded"><Check size={16}/></button>
+                                <button onClick={cancelEdit} className="text-gray-400 p-1 hover:bg-gray-100 rounded"><X size={16}/></button>
+                            </div>
+                        ) : (
+                            <h4 className="font-bold text-gray-900 truncate w-full" title={dream.title}>{dream.title}</h4>
+                        )}
+                    </div>
                 </div>
             ))}
         </div>
     </div>
   );
 };
+
