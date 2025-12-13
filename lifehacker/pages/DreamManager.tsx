@@ -51,14 +51,49 @@ export const DreamManagerPage: React.FC = () => {
       setEditTitle('');
   };
 
-  const saveEdit = async (dream: Dream) => {
-      if (!editTitle.trim()) return;
-      const updatedDream = { ...dream, title: editTitle };
-      await StorageService.saveDream(updatedDream);
-      
-      setDreams(prev => prev.map(d => d.id === dream.id ? updatedDream : d));
+  const saveEdit = async () => {
+      if (!editingId || !editTitle.trim()) return;
+
+      // Find the dream being edited from the current state to ensure data freshness
+      const dreamIndex = dreams.findIndex(d => d.id === editingId);
+      if (dreamIndex === -1) return;
+
+      const originalDream = dreams[dreamIndex];
+      const updatedDream = { ...originalDream, title: editTitle };
+
+      // Optimistic Update: Update UI immediately
+      setDreams(prev => {
+          const newDreams = [...prev];
+          newDreams[dreamIndex] = updatedDream;
+          return newDreams;
+      });
+
+      // Reset edit state immediately for better UX
       setEditingId(null);
       setEditTitle('');
+
+      // Persist to storage
+      try {
+        await StorageService.saveDream(updatedDream);
+      } catch (error) {
+        console.error("Failed to save dream:", error);
+        alert("保存失败，请重试");
+        // Revert on failure (optional, but good practice)
+        setDreams(prev => {
+            const newDreams = [...prev];
+            newDreams[dreamIndex] = originalDream;
+            return newDreams;
+        });
+      }
+  };
+
+  const handleKeyDown = (e: React.KeyboardEvent) => {
+      if (e.key === 'Enter') {
+          e.preventDefault();
+          saveEdit();
+      } else if (e.key === 'Escape') {
+          cancelEdit();
+      }
   };
 
   return (
@@ -97,37 +132,40 @@ export const DreamManagerPage: React.FC = () => {
                             className="w-full h-full object-cover transition-transform duration-700 group-hover:scale-105" 
                         />
                         
-                        {/* Overlay Actions */}
-                        <div className="absolute top-3 right-3 flex gap-2 opacity-0 group-hover:opacity-100 transition-all translate-y-2 group-hover:translate-y-0">
-                            <button 
-                                onClick={() => startEdit(dream)}
-                                className="bg-white/90 text-gray-700 p-2 rounded-full hover:bg-white hover:text-[#8E5E73] shadow-sm backdrop-blur-sm"
-                                title="编辑描述"
-                            >
-                                <Edit2 size={16} />
-                            </button>
-                            <button 
-                                onClick={() => handleDelete(dream.id)}
-                                className="bg-white/90 text-gray-700 p-2 rounded-full hover:bg-white hover:text-red-500 shadow-sm backdrop-blur-sm"
-                                title="删除"
-                            >
-                                <Trash2 size={16} />
-                            </button>
-                        </div>
+                        {/* Overlay Actions - Only show if NOT editing */}
+                        {editingId !== dream.id && (
+                            <div className="absolute top-3 right-3 flex gap-2 opacity-0 group-hover:opacity-100 transition-all translate-y-2 group-hover:translate-y-0">
+                                <button 
+                                    onClick={() => startEdit(dream)}
+                                    className="bg-white/90 text-gray-700 p-2 rounded-full hover:bg-white hover:text-[#8E5E73] shadow-sm backdrop-blur-sm transition-colors"
+                                    title="编辑描述"
+                                >
+                                    <Edit2 size={16} />
+                                </button>
+                                <button 
+                                    onClick={() => handleDelete(dream.id)}
+                                    className="bg-white/90 text-gray-700 p-2 rounded-full hover:bg-white hover:text-red-500 shadow-sm backdrop-blur-sm transition-colors"
+                                    title="删除"
+                                >
+                                    <Trash2 size={16} />
+                                </button>
+                            </div>
+                        )}
                     </div>
 
                     <div className="p-4 bg-white flex-1 flex items-center min-h-[4.5rem]">
                         {editingId === dream.id ? (
                             <div className="flex items-center gap-2 w-full animate-fade-in">
                                 <input 
+                                    type="text"
                                     className="flex-1 bg-[#F5F5F7] px-3 py-2 rounded-lg text-sm outline-none border border-transparent focus:border-[#8E5E73] text-gray-900"
                                     value={editTitle}
                                     onChange={(e) => setEditTitle(e.target.value)}
                                     autoFocus
-                                    onKeyDown={(e) => e.key === 'Enter' && saveEdit(dream)}
+                                    onKeyDown={handleKeyDown}
                                 />
-                                <button onClick={() => saveEdit(dream)} className="text-green-600 p-1.5 hover:bg-green-50 rounded-lg transition-colors"><Check size={18}/></button>
-                                <button onClick={cancelEdit} className="text-gray-400 p-1.5 hover:bg-gray-100 rounded-lg transition-colors"><X size={18}/></button>
+                                <button onClick={saveEdit} className="text-green-600 p-1.5 hover:bg-green-50 rounded-lg transition-colors flex-shrink-0"><Check size={18}/></button>
+                                <button onClick={cancelEdit} className="text-gray-400 p-1.5 hover:bg-gray-100 rounded-lg transition-colors flex-shrink-0"><X size={18}/></button>
                             </div>
                         ) : (
                             <h4 className="font-bold text-gray-900 truncate w-full text-center" title={dream.title}>{dream.title}</h4>
