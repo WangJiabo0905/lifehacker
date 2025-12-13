@@ -1,6 +1,6 @@
 
 import React, { useEffect, useState } from 'react';
-import { Play, ArrowRight } from 'lucide-react';
+import { Play, ArrowRight, ArrowLeft } from 'lucide-react';
 import { Dream } from '../types';
 import { StorageService } from '../services/storageService';
 
@@ -23,8 +23,13 @@ export const DreamBoard: React.FC<DreamBoardProps> = ({ onEnterApp, isGatekeeper
         <h1 className="text-4xl md:text-5xl font-bold tracking-tight mb-2 text-white">
             {isGatekeeper ? 'Vision.' : '梦想画廊'}
         </h1>
-        <p className="text-lg md:text-xl font-light text-white/60">
-           {isGatekeeper ? "向右滑动检阅你的渴望" : "你的梦想蓝图"}
+        <p className="text-lg md:text-xl font-light text-white/60 flex items-center gap-2">
+           {isGatekeeper ? (
+             <>
+                <span>向左滑动检阅你的渴望</span>
+                <ArrowRight size={18} className="animate-pulse"/>
+             </>
+           ) : "你的梦想蓝图"}
         </p>
       </div>
 
@@ -74,9 +79,10 @@ export const DreamBoard: React.FC<DreamBoardProps> = ({ onEnterApp, isGatekeeper
                     <Play size={32} className="text-[#8E5E73] ml-1" fill="currentColor" />
                  </div>
                  
-                 <h3 className="text-3xl font-bold text-white mb-2">开启今日</h3>
-                 <p className="text-white/80 text-center font-light text-sm px-4">
-                     唯有行动，<br/>才能连接梦境与现实。
+                 <h3 className="text-3xl font-bold text-white mb-2">开启今日的逐梦之旅</h3>
+                 <p className="text-white/80 text-center font-light text-sm px-4 leading-relaxed">
+                    <br/>
+                     最终重要的是不要忘记答应自己的事情。
                  </p>
                  
                  <div className="absolute bottom-8 flex items-center gap-2 text-white/50 text-sm font-medium tracking-widest uppercase opacity-0 group-hover:opacity-100 transition-all translate-y-4 group-hover:translate-y-0 duration-500 delay-100">
@@ -93,9 +99,11 @@ export const DreamBoard: React.FC<DreamBoardProps> = ({ onEnterApp, isGatekeeper
       {/* Scroll Hint Animation */}
       {isGatekeeper && dreams.length > 0 && (
          <div className="absolute bottom-8 left-1/2 -translate-x-1/2 text-white/40 text-sm font-light animate-pulse flex flex-col items-center gap-2 pointer-events-none">
-            <span className="tracking-widest uppercase text-xs">Review Your Vision</span>
+            <span className="tracking-widest uppercase text-xs">Scroll to Explore</span>
             <div className="flex items-center gap-1">
-                 滑动查看 <ArrowRight size={14} />
+                 {/* Visual cue: Content moves Left, so look Right */}
+                 <span className="text-xs">向左滑动</span> 
+                 <ArrowRight size={14} />
             </div>
          </div>
       )}
