@@ -62,7 +62,7 @@ export const DreamManagerPage: React.FC = () => {
   };
 
   return (
-    <div className="space-y-8 animate-fade-in">
+    <div className="space-y-8 animate-fade-in pb-12">
         <header>
             <h2 className="text-3xl font-bold text-white">管理梦想</h2>
             <p className="text-white/70 mt-1">上传图片，具象化你的渴望。您可以随时编辑文字描述。</p>
@@ -74,7 +74,7 @@ export const DreamManagerPage: React.FC = () => {
                 <input 
                     type="text" 
                     placeholder="给这个梦想起个名字..." 
-                    className="flex-1 bg-[#F5F5F7] border-none rounded-xl px-4 py-3 outline-none focus:ring-1 focus:ring-[#8E5E73] text-gray-900"
+                    className="flex-1 bg-[#F5F5F7] border-none rounded-xl px-4 py-3 outline-none focus:ring-1 focus:ring-[#8E5E73] text-gray-900 placeholder-gray-400"
                     value={newTitle}
                     onChange={(e) => setNewTitle(e.target.value)}
                 />
@@ -88,22 +88,27 @@ export const DreamManagerPage: React.FC = () => {
 
         <div className="grid grid-cols-1 md:grid-cols-3 lg:grid-cols-4 gap-6">
             {dreams.map(dream => (
-                <div key={dream.id} className="relative group rounded-xl overflow-hidden bg-white shadow-lg border border-white/20 flex flex-col">
-                    <div className="relative aspect-square">
-                        <img src={dream.imageUrl} alt={dream.title} className="w-full h-full object-cover" />
+                <div key={dream.id} className="relative group rounded-2xl overflow-hidden bg-white shadow-lg border border-white/20 flex flex-col hover:shadow-xl transition-all duration-300 hover:-translate-y-1">
+                    {/* Fixed aspect ratio (4:3) for uniformity */}
+                    <div className="relative aspect-[4/3] w-full bg-gray-100 overflow-hidden">
+                        <img 
+                            src={dream.imageUrl} 
+                            alt={dream.title} 
+                            className="w-full h-full object-cover transition-transform duration-700 group-hover:scale-105" 
+                        />
                         
                         {/* Overlay Actions */}
-                        <div className="absolute top-2 right-2 flex gap-2 opacity-0 group-hover:opacity-100 transition-all">
+                        <div className="absolute top-3 right-3 flex gap-2 opacity-0 group-hover:opacity-100 transition-all translate-y-2 group-hover:translate-y-0">
                             <button 
                                 onClick={() => startEdit(dream)}
-                                className="bg-white/90 text-gray-700 p-2 rounded-full hover:bg-white hover:text-[#8E5E73] shadow-sm"
+                                className="bg-white/90 text-gray-700 p-2 rounded-full hover:bg-white hover:text-[#8E5E73] shadow-sm backdrop-blur-sm"
                                 title="编辑描述"
                             >
                                 <Edit2 size={16} />
                             </button>
                             <button 
                                 onClick={() => handleDelete(dream.id)}
-                                className="bg-white/90 text-gray-700 p-2 rounded-full hover:bg-white hover:text-red-500 shadow-sm"
+                                className="bg-white/90 text-gray-700 p-2 rounded-full hover:bg-white hover:text-red-500 shadow-sm backdrop-blur-sm"
                                 title="删除"
                             >
                                 <Trash2 size={16} />
@@ -111,21 +116,21 @@ export const DreamManagerPage: React.FC = () => {
                         </div>
                     </div>
 
-                    <div className="p-4 bg-white flex-1 flex items-center">
+                    <div className="p-4 bg-white flex-1 flex items-center min-h-[4.5rem]">
                         {editingId === dream.id ? (
                             <div className="flex items-center gap-2 w-full animate-fade-in">
                                 <input 
-                                    className="flex-1 bg-[#F5F5F7] px-2 py-1 rounded text-sm outline-none border border-transparent focus:border-[#8E5E73]"
+                                    className="flex-1 bg-[#F5F5F7] px-3 py-2 rounded-lg text-sm outline-none border border-transparent focus:border-[#8E5E73] text-gray-900"
                                     value={editTitle}
                                     onChange={(e) => setEditTitle(e.target.value)}
                                     autoFocus
                                     onKeyDown={(e) => e.key === 'Enter' && saveEdit(dream)}
                                 />
-                                <button onClick={() => saveEdit(dream)} className="text-green-600 p-1 hover:bg-green-50 rounded"><Check size={16}/></button>
-                                <button onClick={cancelEdit} className="text-gray-400 p-1 hover:bg-gray-100 rounded"><X size={16}/></button>
+                                <button onClick={() => saveEdit(dream)} className="text-green-600 p-1.5 hover:bg-green-50 rounded-lg transition-colors"><Check size={18}/></button>
+                                <button onClick={cancelEdit} className="text-gray-400 p-1.5 hover:bg-gray-100 rounded-lg transition-colors"><X size={18}/></button>
                             </div>
                         ) : (
-                            <h4 className="font-bold text-gray-900 truncate w-full" title={dream.title}>{dream.title}</h4>
+                            <h4 className="font-bold text-gray-900 truncate w-full text-center" title={dream.title}>{dream.title}</h4>
                         )}
                     </div>
                 </div>
