@@ -1,3 +1,4 @@
+
 import React from 'react';
 import { 
   Target, 
@@ -53,7 +54,6 @@ export const Navigation: React.FC<NavigationProps> = ({ current, onChange }) => 
       
       <div className="space-y-1 flex-1">
         <div className="text-xs font-semibold text-white/40 uppercase tracking-wider mb-2 pl-4 mt-2">核心 (Core)</div>
-        <NavItem icon={Image} label="梦想相册" active={current === 'dreams_view'} onClick={() => onChange('dreams_view')} />
         <NavItem icon={CalendarCheck} label="今日计划 & 复盘" active={current === 'plan'} onClick={() => onChange('plan')} />
         
         <div className="text-xs font-semibold text-white/40 uppercase tracking-wider mb-2 mt-6 pl-4">记录 (Track)</div>
