@@ -1,34 +1,76 @@
+
 import React from 'react';
-import { Navigation } from './Navigation';
+import { 
+  Target, 
+  Ban, 
+  Trophy, 
+  Lightbulb, 
+  Wallet, 
+  CalendarCheck,
+  Clock,
+  CreditCard,
+  Settings,
+  Image,
+  Database,
+  Sparkles
+} from 'lucide-react';
 import { PageView } from '../types';
 
-interface LayoutProps {
-  children: React.ReactNode;
-  currentPage: PageView;
-  onNavigate: (page: PageView) => void;
-  isDreamMode: boolean;
+interface NavigationProps {
+  current: PageView;
+  onChange: (page: PageView) => void;
 }
 
-export const Layout: React.FC<LayoutProps> = ({ children, currentPage, onNavigate, isDreamMode }) => {
-  if (isDreamMode) {
-    return <div className="min-h-screen bg-black text-white">{children}</div>;
-  }
+const NavItem = ({ 
+  icon: Icon, 
+  label, 
+  active, 
+  onClick 
+}: { 
+  icon: any, 
+  label: string, 
+  active: boolean, 
+  onClick: () => void 
+}) => (
+  <button
+    onClick={onClick}
+    className={`w-full flex items-center space-x-3 px-4 py-3 rounded-xl transition-all duration-200 group ${
+      active 
+        ? 'bg-white text-[#8E5E73] shadow-md' 
+        : 'text-white/70 hover:bg-white/10 hover:text-white hover:shadow-sm'
+    }`}
+  >
+    <Icon size={18} strokeWidth={active ? 2.5 : 2} className="transition-transform group-hover:scale-105" />
+    <span className="font-medium text-sm tracking-wide">{label}</span>
+  </button>
+);
 
+export const Navigation: React.FC<NavigationProps> = ({ current, onChange }) => {
   return (
-    <div className="flex min-h-screen font-sans">
-      <Navigation current={currentPage} onChange={onNavigate} />
-      <main className="flex-1 p-4 md:p-8 overflow-y-auto h-screen scroll-smooth">
-        <div className="max-w-5xl mx-auto h-full">
-            {children}
-        </div>
-      </main>
-      
-      {/* Mobile Nav Overlay */}
-      <div className="md:hidden fixed bottom-0 left-0 right-0 bg-[#8E5E73]/90 backdrop-blur-md border-t border-white/10 p-4 flex justify-around z-50 shadow-2xl">
-        <button onClick={() => onNavigate('dreams_view')} className="text-xs font-medium text-white/80 hover:text-white">Dreams</button>
-        <button onClick={() => onNavigate('plan')} className="text-xs font-medium text-white/80 hover:text-white">Plan</button>
-        <button onClick={() => onNavigate('work')} className="text-xs font-medium text-white/80 hover:text-white">Track</button>
+    <nav className="w-64 h-full flex flex-col p-6 bg-white/5 backdrop-blur-md border-r border-white/10 hidden md:flex sticky top-0 overflow-y-auto">
+      <div className="mb-8 pl-2">
+        <h1 className="text-2xl font-bold tracking-tight text-white">生活黑客</h1>
       </div>
-    </div>
+      
+      <div className="space-y-1 flex-1">
+        <div className="text-xs font-semibold text-white/40 uppercase tracking-wider mb-2 pl-4 mt-2">核心 (Core)</div>
+        <NavItem icon={CalendarCheck} label="今日计划 & 复盘" active={current === 'plan'} onClick={() => onChange('plan')} />
+        
+        <div className="text-xs font-semibold text-white/40 uppercase tracking-wider mb-2 mt-6 pl-4">记录 (Track)</div>
+        <NavItem icon={Clock} label="工作计时" active={current === 'work'} onClick={() => onChange('work')} />
+        <NavItem icon={CreditCard} label="日常开销" active={current === 'expense'} onClick={() => onChange('expense')} />
+        <NavItem icon={Wallet} label="理财分配" active={current === 'finance'} onClick={() => onChange('finance')} />
+
+        <div className="text-xs font-semibold text-white/40 uppercase tracking-wider mb-2 mt-6 pl-4">清单 (Lists)</div>
+        <NavItem icon={Ban} label="不为清单" active={current === 'list_not_todo'} onClick={() => onChange('list_not_todo')} />
+        <NavItem icon={Trophy} label="成功日记" active={current === 'list_success'} onClick={() => onChange('list_success')} />
+        <NavItem icon={Lightbulb} label="赚钱想法" active={current === 'list_ideas'} onClick={() => onChange('list_ideas')} />
+        <NavItem icon={Sparkles} label="启发记录" active={current === 'list_inspiration'} onClick={() => onChange('list_inspiration')} />
+
+        <div className="text-xs font-semibold text-white/40 uppercase tracking-wider mb-2 mt-6 pl-4">设置 (Setup)</div>
+        <NavItem icon={Settings} label="管理梦想" active={current === 'dreams_manage'} onClick={() => onChange('dreams_manage')} />
+        <NavItem icon={Database} label="数据资产" active={current === 'data_backup'} onClick={() => onChange('data_backup')} />
+      </div>
+    </nav>
   );
 };
