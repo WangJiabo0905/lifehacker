@@ -1,76 +1,71 @@
 
-import React from 'react';
-import { 
-  Target, 
-  Ban, 
-  Trophy, 
-  Lightbulb, 
-  Wallet, 
-  CalendarCheck,
-  Clock,
-  CreditCard,
-  Settings,
-  Image,
-  Database,
-  Sparkles
-} from 'lucide-react';
+import React, { useState } from 'react';
 import { PageView } from '../types';
+import { Navigation } from './Navigation';
+import { Menu, X } from 'lucide-react';
 
-interface NavigationProps {
-  current: PageView;
-  onChange: (page: PageView) => void;
+interface LayoutProps {
+  currentPage: PageView;
+  onNavigate: (page: PageView) => void;
+  isDreamMode: boolean;
+  children: React.ReactNode;
 }
 
-const NavItem = ({ 
-  icon: Icon, 
-  label, 
-  active, 
-  onClick 
-}: { 
-  icon: any, 
-  label: string, 
-  active: boolean, 
-  onClick: () => void 
-}) => (
-  <button
-    onClick={onClick}
-    className={`w-full flex items-center space-x-3 px-4 py-3 rounded-xl transition-all duration-200 group ${
-      active 
-        ? 'bg-white text-[#8E5E73] shadow-md' 
-        : 'text-white/70 hover:bg-white/10 hover:text-white hover:shadow-sm'
-    }`}
-  >
-    <Icon size={18} strokeWidth={active ? 2.5 : 2} className="transition-transform group-hover:scale-105" />
-    <span className="font-medium text-sm tracking-wide">{label}</span>
-  </button>
-);
+export const Layout: React.FC<LayoutProps> = ({ currentPage, onNavigate, isDreamMode, children }) => {
+  const [isMobileMenuOpen, setIsMobileMenuOpen] = useState(false);
 
-export const Navigation: React.FC<NavigationProps> = ({ current, onChange }) => {
+  // If in "Dream Mode" (Gatekeeper), we render full screen without layout shell
+  if (isDreamMode) {
+    return <div className="h-screen w-screen bg-black overflow-hidden">{children}</div>;
+  }
+
   return (
-    <nav className="w-64 h-full flex flex-col p-6 bg-white/5 backdrop-blur-md border-r border-white/10 hidden md:flex sticky top-0 overflow-y-auto">
-      <div className="mb-8 pl-2">
-        <h1 className="text-2xl font-bold tracking-tight text-white">生活黑客</h1>
-      </div>
-      
-      <div className="space-y-1 flex-1">
-        <div className="text-xs font-semibold text-white/40 uppercase tracking-wider mb-2 pl-4 mt-2">核心 (Core)</div>
-        <NavItem icon={CalendarCheck} label="今日计划 & 复盘" active={current === 'plan'} onClick={() => onChange('plan')} />
+    <div className="flex h-screen w-screen bg-[#8E5E73] overflow-hidden text-white font-sans selection:bg-white selection:text-[#8E5E73]">
+      {/* Desktop Sidebar */}
+      <Navigation 
+        current={currentPage} 
+        onChange={onNavigate} 
+        className="w-64 h-full hidden md:flex" 
+      />
+
+      {/* Main Content Area */}
+      <main className="flex-1 h-full overflow-y-auto relative custom-scrollbar flex flex-col">
         
-        <div className="text-xs font-semibold text-white/40 uppercase tracking-wider mb-2 mt-6 pl-4">记录 (Track)</div>
-        <NavItem icon={Clock} label="工作计时" active={current === 'work'} onClick={() => onChange('work')} />
-        <NavItem icon={CreditCard} label="日常开销" active={current === 'expense'} onClick={() => onChange('expense')} />
-        <NavItem icon={Wallet} label="理财分配" active={current === 'finance'} onClick={() => onChange('finance')} />
+        {/* Mobile Header */}
+        <div className="md:hidden p-4 flex items-center justify-between sticky top-0 z-30 bg-[#8E5E73]/90 backdrop-blur-md border-b border-white/10">
+             <h1 className="text-lg font-bold text-white tracking-tight">生活黑客</h1>
+             <button onClick={() => setIsMobileMenuOpen(true)} className="text-white p-2 active:scale-95 transition-transform">
+                 <Menu size={24} />
+             </button>
+        </div>
 
-        <div className="text-xs font-semibold text-white/40 uppercase tracking-wider mb-2 mt-6 pl-4">清单 (Lists)</div>
-        <NavItem icon={Ban} label="不为清单" active={current === 'list_not_todo'} onClick={() => onChange('list_not_todo')} />
-        <NavItem icon={Trophy} label="成功日记" active={current === 'list_success'} onClick={() => onChange('list_success')} />
-        <NavItem icon={Lightbulb} label="赚钱想法" active={current === 'list_ideas'} onClick={() => onChange('list_ideas')} />
-        <NavItem icon={Sparkles} label="启发记录" active={current === 'list_inspiration'} onClick={() => onChange('list_inspiration')} />
+        {/* Mobile Menu Overlay */}
+        {isMobileMenuOpen && (
+            <div className="fixed inset-0 z-50 bg-[#8E5E73] flex flex-col animate-fade-in md:hidden">
+                <div className="flex justify-between items-center p-4 border-b border-white/10">
+                    <span className="font-bold text-lg">导航</span>
+                    <button onClick={() => setIsMobileMenuOpen(false)} className="p-2 text-white/70 hover:text-white">
+                        <X size={24}/>
+                    </button>
+                </div>
+                <div className="flex-1 overflow-y-auto p-4">
+                    <Navigation 
+                        current={currentPage} 
+                        onChange={(page) => {
+                            onNavigate(page);
+                            setIsMobileMenuOpen(false);
+                        }} 
+                        className="w-full h-auto border-none bg-transparent static p-0"
+                    />
+                </div>
+            </div>
+        )}
 
-        <div className="text-xs font-semibold text-white/40 uppercase tracking-wider mb-2 mt-6 pl-4">设置 (Setup)</div>
-        <NavItem icon={Settings} label="管理梦想" active={current === 'dreams_manage'} onClick={() => onChange('dreams_manage')} />
-        <NavItem icon={Database} label="数据资产" active={current === 'data_backup'} onClick={() => onChange('data_backup')} />
-      </div>
-    </nav>
+        <div className="p-4 md:p-8 lg:p-12 max-w-7xl mx-auto w-full min-h-full pb-24 md:pb-12">
+            {children}
+        </div>
+      </main>
+    </div>
   );
 };
+
