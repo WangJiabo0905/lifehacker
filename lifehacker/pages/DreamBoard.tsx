@@ -30,13 +30,13 @@ export const DreamBoard: React.FC<DreamBoardProps> = ({ onEnterApp, isGatekeeper
             This forces the user to start with a title screen before seeing any dreams or buttons.
         */}
         {isGatekeeper && (
-            <div className="min-w-full h-full snap-center flex flex-col items-center justify-center relative p-8 shrink-0 bg-black">
+            <div className="min-w-full h-full snap-center snap-always flex flex-col items-center justify-center relative p-8 shrink-0 bg-black">
                 <div className="max-w-md text-center space-y-8 animate-fade-in z-10">
                     <h1 className="text-7xl md:text-8xl font-bold tracking-tighter text-white">梦想相册</h1>
                     <div className="w-16 h-1 bg-[#8E5E73] mx-auto rounded-full"></div>
                     <p className="text-xl md:text-2xl text-white/60 font-light leading-relaxed tracking-wide">
                         不要忘记你的渴望<br/>
-                        <span className="text-base opacity-50 mt-2 block font-normal">确认航向，再出发！</span>
+                        <span className="text-base opacity-50 mt-2 block font-normal">确认航向，再出发</span>
                     </p>
                 </div>
                 
@@ -52,7 +52,7 @@ export const DreamBoard: React.FC<DreamBoardProps> = ({ onEnterApp, isGatekeeper
             Each dream takes up a full screen width (min-w-full).
         */}
         {dreams.map((dream, index) => (
-            <div key={dream.id} className="min-w-full h-full snap-center flex items-center justify-center p-6 md:p-12 shrink-0 relative">
+            <div key={dream.id} className="min-w-full h-full snap-center snap-always flex items-center justify-center p-6 md:p-12 shrink-0 relative">
                 {/* Background Blur for atmosphere */}
                 <div 
                     className="absolute inset-0 opacity-20 blur-3xl scale-125"
@@ -80,7 +80,7 @@ export const DreamBoard: React.FC<DreamBoardProps> = ({ onEnterApp, isGatekeeper
             Ensures the flow isn't broken if data is empty.
         */}
         {dreams.length === 0 && (
-             <div className="min-w-full h-full snap-center flex items-center justify-center p-8 shrink-0 bg-black/50">
+             <div className="min-w-full h-full snap-center snap-always flex items-center justify-center p-8 shrink-0 bg-black/50">
                  <div className="text-center space-y-6 opacity-40 border-2 border-dashed border-white/20 p-16 rounded-[3rem]">
                      <div className="w-20 h-20 bg-white/10 rounded-full flex items-center justify-center mx-auto">
                         <Plus size={40} />
@@ -95,7 +95,7 @@ export const DreamBoard: React.FC<DreamBoardProps> = ({ onEnterApp, isGatekeeper
             This is strictly the LAST item. User MUST scroll here to see it.
         */}
         {isGatekeeper && (
-            <div className="min-w-full h-full snap-center flex flex-col items-center justify-center p-8 shrink-0 bg-black relative">
+            <div className="min-w-full h-full snap-center snap-always flex flex-col items-center justify-center p-8 shrink-0 bg-black relative">
                 <button 
                     onClick={onEnterApp}
                     className="group relative w-64 h-64 md:w-80 md:h-80 rounded-full bg-[#8E5E73] flex flex-col items-center justify-center shadow-[0_0_100px_rgba(142,94,115,0.4)] hover:shadow-[0_0_150px_rgba(142,94,115,0.6)] hover:scale-105 transition-all duration-500 overflow-hidden"
