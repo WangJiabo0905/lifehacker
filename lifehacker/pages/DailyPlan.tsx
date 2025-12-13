@@ -6,7 +6,8 @@ import { StorageService } from '../services/storageService';
 import { BarChart, Bar, XAxis, Tooltip, ResponsiveContainer } from 'recharts';
 
 // Moved outside to prevent re-creation on every render
-const OptionBtn = ({ type, label, days, currentType, setType }: { type: string, label: string, days?: string, currentType: string, setType: (t: any) => void }) => (
+// Fixed: Explicit type for setType (was any)
+const OptionBtn = ({ type, label, days, currentType, setType }: { type: string, label: string, days?: string, currentType: string, setType: (t: string) => void }) => (
   <button
     onClick={() => setType(type)}
     className={`flex-1 py-3 px-2 rounded-xl text-sm font-medium border transition-all flex flex-col items-center justify-center gap-1 ${
@@ -260,13 +261,13 @@ export const DailyPlanPage: React.FC = () => {
                 <div>
                     <label className="block text-xs font-bold text-gray-400 uppercase mb-2">持续时间 / 频率</label>
                     <div className="flex gap-2 mb-2">
-                        <OptionBtn type="SINGLE" label="仅一次" days="Selected Day" currentType={batchType} setType={setBatchType} />
-                        <OptionBtn type="WEEK" label="未来一周" days="7 Days" currentType={batchType} setType={setBatchType} />
-                        <OptionBtn type="MONTH" label="未来一月" days="30 Days" currentType={batchType} setType={setBatchType} />
+                        <OptionBtn type="SINGLE" label="仅一次" days="Selected Day" currentType={batchType} setType={setBatchType as any} />
+                        <OptionBtn type="WEEK" label="未来一周" days="7 Days" currentType={batchType} setType={setBatchType as any} />
+                        <OptionBtn type="MONTH" label="未来一月" days="30 Days" currentType={batchType} setType={setBatchType as any} />
                     </div>
                     <div className="flex gap-2">
-                         <OptionBtn type="YEAR" label="全年" days="365 Days" currentType={batchType} setType={setBatchType} />
-                         <OptionBtn type="CUSTOM" label="自定义" days="Range" currentType={batchType} setType={setBatchType} />
+                         <OptionBtn type="YEAR" label="全年" days="365 Days" currentType={batchType} setType={setBatchType as any} />
+                         <OptionBtn type="CUSTOM" label="自定义" days="Range" currentType={batchType} setType={setBatchType as any} />
                     </div>
                 </div>
 
