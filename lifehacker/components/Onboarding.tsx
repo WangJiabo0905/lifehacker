@@ -1,6 +1,6 @@
 
 import React, { useEffect, useState } from 'react';
-import { X, ChevronRight, Check, Sparkles, ArrowRight, Zap, Skull } from 'lucide-react';
+import { X, ChevronRight, Check, ArrowRight, Skull } from 'lucide-react';
 import { PageView } from '../types';
 
 interface OnboardingProps {
@@ -41,8 +41,8 @@ const TOUR_STEPS: { title: string; desc: string; targetView: PageView }[] = [
   },
   {
     title: "梦想相册 (Vision)",
-    desc: "一切的起点。在这里具象化你的渴望，每次启动应用时，我们都会提醒你为何出发。",
-    targetView: 'dreams_view'
+    desc: "一切的起点。请在这里上传你的愿景图（旅行、物品、状态），每次打开应用时，它们将唤醒你的动力。",
+    targetView: 'dreams_manage'
   }
 ];
 
@@ -182,3 +182,4 @@ export const Onboarding: React.FC<OnboardingProps> = ({ currentView, onChangeVie
     </div>
   );
 };
+
